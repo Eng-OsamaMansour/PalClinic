@@ -1,0 +1,55 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: palclinic_db
+    environment:
+      POSTGRES_DB: palclinic_db
+      POSTGRES_USER: palclinic_user
+      POSTGRES_PASSWORD: palclinic_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:alpine
+    container_name: palclinic_redis
+
+  web:
+    build: .
+    container_name: palclinic_backend
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+
+  celery:
+    build: .
+    container_name: palclinic_celery
+    command: celery -A PalClinic worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+
+  celery-beat:
+    build: .
+    container_name: palclinic_beat
+    command: celery -A PalClinic beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - web
+
+volumes:
+  postgres_data:
