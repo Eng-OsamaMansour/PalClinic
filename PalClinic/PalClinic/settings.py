@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'HealthCareCenter',
     'django.contrib.gis',
+    'Clinic',
 ]
 
 AUTH_USER_MODEL = 'Users.User'
