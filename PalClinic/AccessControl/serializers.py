@@ -1,6 +1,6 @@
 from django.forms import ValidationError
 from rest_framework import serializers
-from .models import DoctorAccessRequest,AssignedHealthCareCenterModerators
+from .models import DoctorAccessRequest,AssignedHealthCareCenterModerators,AssignClinicModerators
 from Users.models import User
 
 class DoctorAccessRequstSerlizer(serializers.ModelSerializer):
@@ -35,4 +35,13 @@ class AssignedHealthCareCenterModeratorsSerlizer(serializers.ModelSerializer):
         if AssignedHealthCareCenterModerators.objects.filter(healthcarecenter=healthcarecenter).exists():
             raise serializers.ValidationError("This Health Center Already Has A Moderator")
         return attrs
-        
+
+class AssignClinicModeratorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignClinicModerators
+        fields = ['moderator','clinic','is_active']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        clinic = self.context.get('request').data.get('clinic')
+        if AssignClinicModerators.objects.filter(clinic = clinic).exists():
+            raise ValidationError("this clinic is already has a moderator")
