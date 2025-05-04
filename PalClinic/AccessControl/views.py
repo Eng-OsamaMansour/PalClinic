@@ -105,3 +105,13 @@ class AssignCLinicModeratorUpdateView(generics.UpdateAPIView):
              raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
         
         return super().patch(request,*args,**kwargs)
+
+# not tested
+class AssignedClinichModeratorListView(generics.ListAPIView):
+    serializer_class = AssignClinicModeratorSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def get_queryset(self):
+        return AssignClinicModerators.objects.all()
+    def get_object(self):
+        return super().get_object()

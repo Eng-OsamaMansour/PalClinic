@@ -11,7 +11,9 @@ urlpatterns = [
     path('assignedhealthmodirator/update/<int:pk>',views.AssignedHealthModeratorUpdateView.as_view(), name = 'update_assigned_moderator'),
     path("assignedhealthmodirator/",views.AssignedHealthModeratorListView.as_view(),name='get_all_moderators'),
     path('assignclinicmoderator/',views.AssignClinicModeratorCreateView.as_view(),name='assign clinic moderator'),
-    path('assignclinicmoderator/update/<int:pk>',views.AssignCLinicModeratorUpdateView.as_view(),name='update assign clinic moderator')
+    path('assignclinicmoderator/update/<int:pk>',views.AssignCLinicModeratorUpdateView.as_view(),name='update assign clinic moderator'),
+    path('assignclinicmoderator/',views.AssignedClinichModeratorListView.as_view(),name='get all clinic moderator'),
+
     # path('authorized-doctors/', list_authorized_doctors, name='list-authorized-doctors'),
     # path('authorize-doctor/', authorize_doctor, name='authorize-doctor'),
     # path('revoke-doctor/<int:doctor_id>/', revoke_doctor, name='revoke-doctor'),
