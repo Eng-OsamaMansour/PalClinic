@@ -1,8 +1,9 @@
 from rest_framework.permissions import BasePermission,SAFE_METHODS
-from AccessControl.models import DoctorAccessRequest,AssignedHealthCareCenterModerators
+from AccessControl.models import DoctorAccessRequest,AssignedHealthCareCenterModerators,AssignClinicModerators
 from MedicalProfile.models import DoctorNote
 from Users.models import User
 from HealthCareCenter.models import HealthCareCenter
+from Clinic.models import Clinic
 
 
 # Used
@@ -88,3 +89,23 @@ class IsHealthAllawoedModeratorOrAdmin(BasePermission):
                 return False
             return is_assigned_moderator(healthcarecenter, user)  
         return False
+    
+def is_assigned_clinic_moderator(clinic,moderator):
+    return AssignClinicModerators.objects.filter(moderator=moderator,clinic=clinic,is_active=True).exists()
+class IsClinicAllowedModeratorOrAdmin(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if user.role == 'Admin':
+            return True
+        elif user.role == 'clinic_moderator':
+            clinic_id = view.kwargs.get('pk')
+            if not clinic_id:
+                return False
+            try:
+                clinic = Clinic.objects.get(id=clinic_id)
+            except Clinic.DoesNotExist:
+                return False
+            return is_assigned_clinic_moderator(clinic,user)
+        return False
+    
+            
