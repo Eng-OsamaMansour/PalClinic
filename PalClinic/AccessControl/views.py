@@ -5,6 +5,7 @@ from .serializers import *
 from .permissions import IsDoctorUser, IsOwner,IsAdmin
 from Users.models import User
 from HealthCareCenter.models import HealthCareCenter
+from Clinic.models import Clinic
 
 class DoctorAccessRequestCreateView(generics.CreateAPIView):
     serializer_class = DoctorAccessRequstSerlizer
@@ -78,50 +79,13 @@ class AssignedHealthModeratorListView(generics.ListAPIView):
     def get_object(self):
         return super().get_object()
 
-
-
-
-
-# @api_view(['GET'])
-# @permission_classes([IsPatientUser])
-# def list_authorized_doctors(request):
-#     doctors = AuthorizedDoctor.objects.filter(patient=request.user, is_active=True)
-#     serializer = AuthorizedDoctorSerializer(doctors, many=True)
-#     return Response(serializer.data)
-
-
-# @api_view(['POST'])
-# @permission_classes([IsPatientUser])
-# def authorize_doctor(request):
-#     doctor_id = request.data.get('doctor_id')
-#     try:
-#         doctor = User.objects.get(id=doctor_id, role='doctor')
-#     except User.DoesNotExist:
-#         return Response({'error': 'Doctor not found.'}, status=404)
-
-#     auth_obj, created = AuthorizedDoctor.objects.get_or_create(
-#         patient=request.user, doctor=doctor,
-#         defaults={'is_active': True}
-#     )
-#     if not created:
-#         if auth_obj.is_active:
-#             return Response({'detail': 'Doctor is already authorized.'}, status=400)
-#         else:
-#             auth_obj.is_active = True
-#             auth_obj.save()
-
-#     serializer = AuthorizedDoctorSerializer(auth_obj)
-#     return Response(serializer.data, status=201)
-
-
-# @api_view(['POST'])
-# @permission_classes([IsPatientUser])
-# def revoke_doctor(request, doctor_id):
-#     try:
-#         auth_obj = AuthorizedDoctor.objects.get(patient=request.user, doctor_id=doctor_id)
-#     except AuthorizedDoctor.DoesNotExist:
-#         return Response({'error': 'Authorization not found.'}, status=404)
-
-#     auth_obj.is_active = False
-#     auth_obj.save()
-#     return Response({'detail': 'Doctor authorization revoked.'}, status=200)
+class AssignClinicModeratorCreateView(generics.CreateAPIView):
+    serializer_class = AssignClinicModeratorSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        moderator_id = self.request.data.get('moderator')
+        clinic_id = self.request.get('clinic')
+        moderator = User.objects.get(id = moderator_id)
+        clinic = Clinic.objects.get(id = clinic_id)
+        serializer.save(moderator = moderator, clinic = clinic)
