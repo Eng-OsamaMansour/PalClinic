@@ -1,6 +1,7 @@
 from django.db import models
 from Users.models import User
 from HealthCareCenter.models import HealthCareCenter
+from Clinic.models import Clinic
 class DoctorAccessRequest(models.Model):
     class StatusChoices(models.TextChoices):
         ACCEPTED = 'accepted'
@@ -16,5 +17,11 @@ class DoctorAccessRequest(models.Model):
 class AssignedHealthCareCenterModerators(models.Model):
     moderator = models.ForeignKey(User,on_delete=models.CASCADE,limit_choices_to={'role': 'healthcarecenter_moderator'})
     healthcarecenter = models.ForeignKey(HealthCareCenter,on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AssignClinicModerators(models.Model):
+    moderator = models.ForeignKey(User,on_delete=models.CASCADE, limit_choices_to={'role': 'clinic_moderator'})
+    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

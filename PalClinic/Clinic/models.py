@@ -19,4 +19,4 @@ class Clinic(models.Model):
     # announsments
     # health care center
     # assigned doctors
-    
+
