@@ -79,6 +79,7 @@ class AssignedHealthModeratorListView(generics.ListAPIView):
     def get_object(self):
         return super().get_object()
 
+# not tested
 class AssignClinicModeratorCreateView(generics.CreateAPIView):
     serializer_class = AssignClinicModeratorSerializer
     http_method_names = ['post']
@@ -89,3 +90,18 @@ class AssignClinicModeratorCreateView(generics.CreateAPIView):
         moderator = User.objects.get(id = moderator_id)
         clinic = Clinic.objects.get(id = clinic_id)
         serializer.save(moderator = moderator, clinic = clinic)
+
+# not tested
+class AssignCLinicModeratorUpdateView(generics.UpdateAPIView):
+    queryset = Clinic.objects.all()
+    serializer_class = AssignClinicModeratorSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
