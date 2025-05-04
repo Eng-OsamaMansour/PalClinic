@@ -1,0 +1,38 @@
+from django.forms import ValidationError
+from rest_framework import serializers
+from .models import DoctorAccessRequest,AssignedHealthCareCenterModerators
+from Users.models import User
+
+class DoctorAccessRequstSerlizer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(read_only=True)
+    patient = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = DoctorAccessRequest
+        fields = ['doctor','patient','status', 'is_active', 'created_at']
+        read_only_fields = ['is_active', 'created_at']
+    def validate(self, attrs):
+        request = self.context.get('request')
+        doctor = request.user
+        patient_id = self.context.get('view').kwargs.get('patient_id')
+
+        if DoctorAccessRequest.objects.filter(doctor=doctor, patient_id=patient_id).exists():
+            raise ValidationError("An access request from this doctor to this patient already exists.")
+
+        return attrs
+
+class UpdateActiveOrStatusSerlizer(serializers.ModelSerializer):
+    class Meta:
+        modle = DoctorAccessRequest
+        fileds = ['status','is_active']
+
+class AssignedHealthCareCenterModeratorsSerlizer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignedHealthCareCenterModerators
+        fields = ['moderator','healthcarecenter','is_active']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        healthcarecenter = self.context.get('request').data.get('healthcarecenter')
+        if AssignedHealthCareCenterModerators.objects.filter(healthcarecenter=healthcarecenter).exists():
+            raise serializers.ValidationError("This Health Center Already Has A Moderator")
+        return attrs
+        
