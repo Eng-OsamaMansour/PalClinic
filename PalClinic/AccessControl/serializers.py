@@ -45,22 +45,28 @@ class AssignClinicModeratorSerializer(serializers.ModelSerializer):
         clinic = self.context.get('request').data.get('clinic')
         if AssignClinicModerators.objects.filter(clinic = clinic).exists():
             raise ValidationError("this clinic is already has a moderator")
+        return attrs
 
-# not tested
+
 class AssignClinicToHealthCenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignClinicToHealthCenter
         fields = ['health','clinic','is_active']
         read_only_fields = ['created_at']
     def validate(self, attrs):
-        clinic = self.context.get('request').data.get('clinic')
-        health = self.context.get('request').data.get('health')
-        if not HealthCareCenter.objects.filter(id = clinic).exists():
-            raise ValidationError("The Clinic Does Not exist")
-        if not Clinic.objects.filter(id = health).exists():
-            raise ValidationError("The HealthCenter Does Not exists")
-        if AssignClinicToHealthCenter.objects.filter(clinic = clinic, is_acive=True).exists():
-            raise ValidationError("The Clinic is Already Assigned to health care center")
+        request = self.context.get('request')
+        if request.method == 'POST':
+            clinic = self.context.get('request').data.get('clinic')
+            health = self.context.get('request').data.get('health')
+            if not HealthCareCenter.objects.filter(id = clinic).exists():
+                raise ValidationError("The Clinic Does Not exist")
+            if not Clinic.objects.filter(id = health).exists():
+                raise ValidationError("The HealthCenter Does Not exists")
+            if AssignClinicToHealthCenter.objects.filter(clinic = clinic,).exists():
+                raise ValidationError("The Clinic is Already Assigned to health care center")
+            elif request.method == 'PATCH':
+                if not AssignClinicToHealthCenter.objects.filter(id = self.context.get('request').kwargs.get('pk')).exists():
+                    raise ValidationError("The relation does not exisit")
         return attrs
 
 # not Tested 

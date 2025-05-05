@@ -79,19 +79,19 @@ class AssignedHealthModeratorListView(generics.ListAPIView):
     def get_object(self):
         return super().get_object()
 
-# not tested
+
 class AssignClinicModeratorCreateView(generics.CreateAPIView):
     serializer_class = AssignClinicModeratorSerializer
     http_method_names = ['post']
     permission_classes = [permissions.IsAuthenticated,IsAdmin]
     def perform_create(self, serializer):
         moderator_id = self.request.data.get('moderator')
-        clinic_id = self.request.get('clinic')
+        clinic_id = self.request.data.get('clinic')
         moderator = User.objects.get(id = moderator_id)
         clinic = Clinic.objects.get(id = clinic_id)
         serializer.save(moderator = moderator, clinic = clinic)
 
-# not tested
+
 class AssignCLinicModeratorUpdateView(generics.UpdateAPIView):
     queryset = AssignClinicModerators.objects.all()
     serializer_class = AssignClinicModeratorSerializer
@@ -106,7 +106,6 @@ class AssignCLinicModeratorUpdateView(generics.UpdateAPIView):
         
         return super().patch(request,*args,**kwargs)
 
-# not tested
 class AssignedClinichModeratorListView(generics.ListAPIView):
     serializer_class = AssignClinicModeratorSerializer
     http_method_names = ['get']
@@ -116,17 +115,17 @@ class AssignedClinichModeratorListView(generics.ListAPIView):
     def get_object(self):
         return super().get_object()
     
-# not tested / need url
+
 class AssignClinicToHealthCenterCreateView(generics.CreateAPIView):
     serializer_class = AssignClinicToHealthCenterSerializer
     http_method_names = ['post']
     permission_classes = [permissions.IsAuthenticated,IsAdmin]
     def perform_create(self, serializer):
-        clinic = self.request.data.get('clinic')
-        health = self.request.data.get('health')
+        clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
+        health = HealthCareCenter.objects.get(id = self.request.data.get('health'))
+        
         serializer.save(clinic = clinic,health=health)
 
-# not tested / need url
 class AssignClinicToHealthCenterUpdateView(generics.UpdateAPIView):
     queryset = AssignClinicToHealthCenter.objects.all()
     serializer_class = AssignClinicToHealthCenterSerializer
@@ -141,12 +140,12 @@ class AssignClinicToHealthCenterUpdateView(generics.UpdateAPIView):
         
         return super().patch(request,*args,**kwargs)
 
-# not tested / need urls / health id
-class AssignedClinichModeratorListView(generics.ListAPIView):
+
+class AssignClinicToHealthCenterListView(generics.ListAPIView):
     serializer_class = AssignClinicToHealthCenterSerializer
     http_method_names = ['get']
     permission_classes = [permissions.IsAuthenticated,IsAdmin]
     def get_queryset(self):
-        return AssignClinicToHealthCenter.objects.get(health = self.request.data.get('health'))
+        return AssignClinicToHealthCenter.objects.filter(health_id = self.kwargs.get('health_id'))
     def get_object(self):
         return super().get_object()

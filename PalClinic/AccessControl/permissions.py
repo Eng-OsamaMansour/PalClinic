@@ -77,7 +77,7 @@ def is_assigned_moderator(healthcarecenter ,moderator):
 class IsHealthAllawoedModeratorOrAdmin(BasePermission):
     def has_permission(self, request, view):
         user = request.user
-        if user.role == 'Admin':
+        if user.role == 'admin':
             return True        
         elif user.role == 'healthcarecenter_moderator':
             healthcarecenter_id = view.kwargs.get('pk')  
@@ -89,13 +89,14 @@ class IsHealthAllawoedModeratorOrAdmin(BasePermission):
                 return False
             return is_assigned_moderator(healthcarecenter, user)  
         return False
-    
+ 
 def is_assigned_clinic_moderator(clinic,moderator):
     return AssignClinicModerators.objects.filter(moderator=moderator,clinic=clinic,is_active=True).exists()
 class IsClinicAllowedModeratorOrAdmin(BasePermission):
     def has_permission(self, request, view):
         user = request.user
-        if user.role == 'Admin':
+        print(user.role)
+        if user.role == 'admin':
             return True
         elif user.role == 'clinic_moderator':
             clinic_id = view.kwargs.get('pk')

@@ -9,6 +9,7 @@ class ClinicCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated,IsAdmin]
     def perform_create(self, serializer):
         return super().perform_create(serializer)
+    
 
 class ClinicUpdateView(generics.UpdateAPIView):
     queryset = Clinic.objects.all()
@@ -21,3 +22,14 @@ class ClinicUpdateView(generics.UpdateAPIView):
         disallowed = requested_fields - allowed_fields
         if disallowed:
             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        return super().patch(request, *args, **kwargs)
+        
+
+class ClinicListView(generics.ListAPIView):
+    serializer_class = ClinicSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.AllowAny]
+    def get_queryset(self):
+        return Clinic.objects.all()
+    def get_object(self):
+        return super().get_object()
