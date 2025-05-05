@@ -15,5 +15,8 @@ urlpatterns = [
     path('assignclinicmoderator/get/',views.AssignedClinichModeratorListView.as_view(),name='get all clinic moderator'),
     path('assignclinichealth/',views.AssignClinicToHealthCenterCreateView.as_view(), name="assign clinic to health care center"),
     path('assignclinichealth/update/<int:pk>',views.AssignClinicToHealthCenterUpdateView.as_view(), name="update assign clinic to health care center"),
-    path('assignclinichealth/<int:health_id>',views.AssignClinicToHealthCenterListView.as_view(), name= 'Clinics under this health center')
+    path('assignclinichealth/<int:health_id>',views.AssignClinicToHealthCenterListView.as_view(), name= 'Clinics under this health center'),
+    path('assigndoctortoclinic/',views.AssignDoctorToClinkCreateView.as_view(),name="assign doctor to clinic"),
+    path('assigndoctortoclinic/update/<int:pk>',views.AssignDoctorToClinicUpdateView.as_view(), name='update assign doctor to clinic'),
+    path('assigndoctortoclinic/<int:clinic_id>',views.AssignDoctorToClinicListView.as_view(),name='get all doctors in a certen clinic'),
 ]

@@ -149,3 +149,34 @@ class AssignClinicToHealthCenterListView(generics.ListAPIView):
         return AssignClinicToHealthCenter.objects.filter(health_id = self.kwargs.get('health_id'))
     def get_object(self):
         return super().get_object()
+    
+class AssignDoctorToClinkCreateView(generics.CreateAPIView):
+    serializer_class = AssignDoctorToClinicSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        doctor = User.objects.get(id = self.request.data.get('doctor'))
+        clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
+        serializer.save(doctor = doctor,clinic = clinic)
+
+class AssignDoctorToClinicUpdateView(generics.UpdateAPIView):
+    queryset = AssignDoctorToClinic.objects.all()
+    serializer_class = AssignDoctorToClinicSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fileds = set(request.data.keys())
+        disallowed = requested_fileds - allowed_fields
+        if disallowed:
+            raise ValidationError("you dont allowed to update this fields")        
+        return super().patch(request, *args, **kwargs)
+
+class AssignDoctorToClinicListView(generics.ListAPIView):
+    serializer_class = AssignDoctorToClinicSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.AllowAny]
+    def get_queryset(self):
+        return AssignDoctorToClinic.objects.filter(clinic_id = self.kwargs.get('clinic_id'))
+    def get_object(self):
+        return super().get_object()

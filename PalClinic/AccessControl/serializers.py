@@ -69,16 +69,18 @@ class AssignClinicToHealthCenterSerializer(serializers.ModelSerializer):
                     raise ValidationError("The relation does not exisit")
         return attrs
 
-# not Tested 
+
 class AssignDoctorToClinicSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssignDoctorToClinic
-        fields = ['doctor','clinic','is_active']
+        fields = ['id','doctor','clinic','is_active']
         read_only_fields = ['created_at']
     def validate(self, attrs):
-        doctor = self.context.get('request').data.get('doctor')
-        clinic = self.context.get('request').data.get('doctor')
-        if AssignDoctorToClinic.objects.filter(doctor = doctor,clinic=clinic).exists():
-            raise ValidationError("this doctor is allready assigned to this clinic")
+        request = self.context.get('request')
+        if request.method == 'POST':
+            doctor = User.objects.get(id =self.context.get('request').data.get('doctor'))
+            clinic = Clinic.objects.get(id = self.context.get('request').data.get('clinic'))
+            if AssignDoctorToClinic.objects.filter(doctor = doctor,clinic=clinic).exists():
+                raise ValidationError("this doctor is allready assigned to this clinic")
         return attrs
-    
+
