@@ -93,7 +93,7 @@ class AssignClinicModeratorCreateView(generics.CreateAPIView):
 
 # not tested
 class AssignCLinicModeratorUpdateView(generics.UpdateAPIView):
-    queryset = Clinic.objects.all()
+    queryset = AssignClinicModerators.objects.all()
     serializer_class = AssignClinicModeratorSerializer
     http_method_names = ['patch']
     permission_classes = [permissions.IsAuthenticated,IsAdmin]
@@ -113,5 +113,40 @@ class AssignedClinichModeratorListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated,IsAdmin]
     def get_queryset(self):
         return AssignClinicModerators.objects.all()
+    def get_object(self):
+        return super().get_object()
+    
+# not tested / need url
+class AssignClinicToHealthCenterCreateView(generics.CreateAPIView):
+    serializer_class = AssignClinicToHealthCenterSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        clinic = self.request.data.get('clinic')
+        health = self.request.data.get('health')
+        serializer.save(clinic = clinic,health=health)
+
+# not tested / need url
+class AssignClinicToHealthCenterUpdateView(generics.UpdateAPIView):
+    queryset = AssignClinicToHealthCenter.objects.all()
+    serializer_class = AssignClinicToHealthCenterSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
+
+# not tested / need urls / health id
+class AssignedClinichModeratorListView(generics.ListAPIView):
+    serializer_class = AssignClinicToHealthCenterSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def get_queryset(self):
+        return AssignClinicToHealthCenter.objects.get(health = self.request.data.get('health'))
     def get_object(self):
         return super().get_object()
