@@ -31,4 +31,10 @@ class AssignClinicToHealthCenter(models.model):
     clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class AssignDoctorToClinic(models.Model):
+    doctor = models.ForeignKey(User,on_delete=models.CASCADE,limit_choices_to={'role':'doctor'})
+    Clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     
