@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'HealthCareCenter',
     'django.contrib.gis',
     'Clinic',
+    'Appointment',
 ]
 
 AUTH_USER_MODEL = 'Users.User'
