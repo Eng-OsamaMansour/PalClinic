@@ -112,7 +112,7 @@ class IsClinicAllowedModeratorOrAdmin(BasePermission):
 
 class IsTheClinicModerator(BasePermission):
     def has_permission(self, request, view):
-        clinic_id = view.kwargs.get('clinic_id')
+        clinic_id = request.data.get('clinic')
         user = request.user
         return is_assigned_clinic_moderator(clinic=clinic_id, moderator=user)
     

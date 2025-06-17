@@ -1,0 +1,3002 @@
+
+--- FILE: manage.py ---
+
+#!/usr/bin/env python
+"""Django's command-line utility for administrative tasks."""
+import os
+import sys
+
+
+def main():
+    """Run administrative tasks."""
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PalClinic.settings')
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError(
+            "Couldn't import Django. Are you sure it's installed and "
+            "available on your PYTHONPATH environment variable? Did you "
+            "forget to activate a virtual environment?"
+        ) from exc
+    execute_from_command_line(sys.argv)
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+--- FILE: requirements.txt ---
+
+[Error reading file: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte]
+
+
+--- FILE: AccessControl\admin.py ---
+
+from django.contrib import admin
+
+# Register your models here.
+
+
+
+--- FILE: AccessControl\apps.py ---
+
+from django.apps import AppConfig
+
+
+class AccesscontrolConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'AccessControl'
+
+
+
+--- FILE: AccessControl\models.py ---
+
+from django.db import models
+from Users.models import User
+from HealthCareCenter.models import HealthCareCenter
+from Clinic.models import Clinic
+class DoctorAccessRequest(models.Model):
+    class StatusChoices(models.TextChoices):
+        ACCEPTED = 'accepted'
+        REJECTED = 'rejected'
+        PENDING = 'pending'
+
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='authorized_doctors', limit_choices_to={'role': 'patient'})
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='authorized_patients', limit_choices_to={'role': 'doctor'})
+    status = models.CharField(max_length=10, choices=StatusChoices.choices, default=StatusChoices.PENDING)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AssignedHealthCareCenterModerators(models.Model):
+    moderator = models.ForeignKey(User,on_delete=models.CASCADE,limit_choices_to={'role': 'healthcarecenter_moderator'})
+    healthcarecenter = models.ForeignKey(HealthCareCenter,on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AssignClinicModerators(models.Model):
+    moderator = models.ForeignKey(User,on_delete=models.CASCADE, limit_choices_to={'role': 'clinic_moderator'})
+    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AssignClinicToHealthCenter(models.Model):
+    health = models.ForeignKey(HealthCareCenter,on_delete=models.CASCADE)
+    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class AssignDoctorToClinic(models.Model):
+    doctor = models.ForeignKey(User,on_delete=models.CASCADE,limit_choices_to={'role':'doctor'})
+    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+
+
+--- FILE: AccessControl\permissions.py ---
+
+from rest_framework.permissions import BasePermission,SAFE_METHODS
+from AccessControl.models import DoctorAccessRequest,AssignedHealthCareCenterModerators,AssignClinicModerators
+from MedicalProfile.models import DoctorNote
+from Appointment.models import Appointment
+from Users.models import User
+from HealthCareCenter.models import HealthCareCenter
+from Clinic.models import Clinic
+
+
+# Used
+class IsAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+# Used     
+class IsPatient(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'patient'
+
+# Used
+class IsDoctor(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'doctor'
+    
+class IsClinicModerator(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'clinic_moderator'
+
+class IsHealthcareCenterModerator(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'healthcarecenter_moderator'
+    
+class IsLabModerator(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'lab_moderator'
+
+class IsDoctorUser(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'doctor'
+
+# Used
+class IsOwner(BasePermission):
+    def has_permission(self, request, view):
+        patient_id = view.kwargs.get('patient_id')
+        if patient_id:
+            return str(request.user.id) == str(patient_id)
+        return True 
+
+    def has_object_permission(self, request, view, obj):
+        return obj.patient == request.user
+
+def is_allowed_doctor(doctor, patient):
+    return DoctorAccessRequest.objects.filter(patient=patient, doctor=doctor,status='accepted', is_active=True).exists()
+
+# Used
+class IsAllowedDoctor(BasePermission):
+    def has_permission(self, request, view):
+        patient = User.objects.get(id=view.kwargs['paitent_id'])
+        doctor = request.user
+        return is_allowed_doctor(doctor,patient)
+# Used
+class IsOwnerOrAllowedDoctor(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if user.role != 'doctor' and user.role != 'patient':
+            return False
+        patient = User.objects.get(id=view.kwargs['paitent_id'])
+        return is_allowed_doctor(user, patient) or user == patient
+
+
+class CanEditDoctorNote(BasePermission):
+    def has_object_permission(self, request, view, obj: DoctorNote):
+        return request.method in SAFE_METHODS or obj.doctor == request.user
+
+
+def is_assigned_moderator(healthcarecenter ,moderator):
+    return AssignedHealthCareCenterModerators.objects.filter(healthcarecenter = healthcarecenter,moderator=moderator,is_active = True).exists()
+class IsHealthAllawoedModeratorOrAdmin(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if user.role == 'admin':
+            return True        
+        elif user.role == 'healthcarecenter_moderator':
+            healthcarecenter_id = view.kwargs.get('pk')  
+            if not healthcarecenter_id:
+                return False
+            try:
+                healthcarecenter = HealthCareCenter.objects.get(id=healthcarecenter_id)
+            except HealthCareCenter.DoesNotExist:
+                return False
+            return is_assigned_moderator(healthcarecenter, user)  
+        return False
+ 
+def is_assigned_clinic_moderator(clinic,moderator):
+    return AssignClinicModerators.objects.filter(moderator=moderator,clinic=clinic,is_active=True).exists()
+class IsClinicAllowedModeratorOrAdmin(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        print(user.role)
+        if user.role == 'admin':
+            return True
+        elif user.role == 'clinic_moderator':
+            clinic_id = view.kwargs.get('pk')
+            if not clinic_id:
+                return False
+            try:
+                clinic = Clinic.objects.get(id=clinic_id)
+            except Clinic.DoesNotExist:
+                return False
+            return is_assigned_clinic_moderator(clinic,user)
+        return False
+
+class IsTheClinicModerator(BasePermission):
+    def has_permission(self, request, view):
+        clinic_id = request.data.get('clinic')
+        user = request.user
+        return is_assigned_clinic_moderator(clinic=clinic_id, moderator=user)
+    
+class IsTheAppointmentModerator(BasePermission):
+    def has_permission(self, request, view):
+        appointment_id = view.kwargs.get('pk')
+        appointment = Appointment.objects.get(id = appointment_id)
+        clinic =  appointment.clinic
+        moderator = request.user
+        return is_assigned_clinic_moderator(clinic=clinic,moderator=moderator)
+
+    
+    
+            
+
+
+--- FILE: AccessControl\serializers.py ---
+
+from django.forms import ValidationError
+from rest_framework import serializers
+from .models import *
+from Users.models import User
+
+class DoctorAccessRequstSerlizer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(read_only=True)
+    patient = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = DoctorAccessRequest
+        fields = ['doctor','patient','status', 'is_active', 'created_at']
+        read_only_fields = ['is_active', 'created_at']
+    def validate(self, attrs):
+        request = self.context.get('request')
+        doctor = request.user
+        patient_id = self.context.get('view').kwargs.get('patient_id')
+
+        if DoctorAccessRequest.objects.filter(doctor=doctor, patient_id=patient_id).exists():
+            raise ValidationError("An access request from this doctor to this patient already exists.")
+
+        return attrs
+
+class UpdateActiveOrStatusSerlizer(serializers.ModelSerializer):
+    class Meta:
+        modle = DoctorAccessRequest
+        fileds = ['status','is_active']
+
+class AssignedHealthCareCenterModeratorsSerlizer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignedHealthCareCenterModerators
+        fields = ['moderator','healthcarecenter','is_active']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        healthcarecenter = self.context.get('request').data.get('healthcarecenter')
+        if AssignedHealthCareCenterModerators.objects.filter(healthcarecenter=healthcarecenter).exists():
+            raise serializers.ValidationError("This Health Center Already Has A Moderator")
+        return attrs
+
+class AssignClinicModeratorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignClinicModerators
+        fields = ['moderator','clinic','is_active']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        clinic = self.context.get('request').data.get('clinic')
+        if AssignClinicModerators.objects.filter(clinic = clinic).exists():
+            raise ValidationError("this clinic is already has a moderator")
+        return attrs
+
+
+class AssignClinicToHealthCenterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignClinicToHealthCenter
+        fields = ['health','clinic','is_active']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request.method == 'POST':
+            clinic = self.context.get('request').data.get('clinic')
+            health = self.context.get('request').data.get('health')
+            if not HealthCareCenter.objects.filter(id = clinic).exists():
+                raise ValidationError("The Clinic Does Not exist")
+            if not Clinic.objects.filter(id = health).exists():
+                raise ValidationError("The HealthCenter Does Not exists")
+            if AssignClinicToHealthCenter.objects.filter(clinic = clinic,).exists():
+                raise ValidationError("The Clinic is Already Assigned to health care center")
+            elif request.method == 'PATCH':
+                if not AssignClinicToHealthCenter.objects.filter(id = self.context.get('request').kwargs.get('pk')).exists():
+                    raise ValidationError("The relation does not exisit")
+        return attrs
+
+
+class AssignDoctorToClinicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignDoctorToClinic
+        fields = ['id','doctor','clinic','is_active']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request.method == 'POST':
+            doctor = User.objects.get(id =self.context.get('request').data.get('doctor'))
+            clinic = Clinic.objects.get(id = self.context.get('request').data.get('clinic'))
+            if AssignDoctorToClinic.objects.filter(doctor = doctor,clinic=clinic).exists():
+                raise ValidationError("this doctor is allready assigned to this clinic")
+        return attrs
+
+
+
+
+--- FILE: AccessControl\urls.py ---
+
+from django.urls import path
+from . import views
+
+
+
+urlpatterns = [
+    path('access_request/<int:patient_id>',views.DoctorAccessRequestCreateView.as_view(),name='send_access_request'),
+    path('access_request/update/<int:pk>', views.UpdateStatusOrActiveUpdateView.as_view(), name='update_request'),
+    path('access_requst/get/<int:patient_id>',views.GetAllRequestsListView.as_view(), name='get_requsets'),
+    path('assignealthmoderator',views.AssignHealthModeratorCreateView.as_view(),name='assign_health_moderator'),
+    path('assignedhealthmodirator/update/<int:pk>',views.AssignedHealthModeratorUpdateView.as_view(), name = 'update_assigned_moderator'),
+    path("assignedhealthmodirator/",views.AssignedHealthModeratorListView.as_view(),name='get_all_moderators'),
+    path('assignclinicmoderator/',views.AssignClinicModeratorCreateView.as_view(),name='assign clinic moderator'),
+    path('assignclinicmoderator/update/<int:pk>',views.AssignCLinicModeratorUpdateView.as_view(),name='update assign clinic moderator'),
+    path('assignclinicmoderator/get/',views.AssignedClinichModeratorListView.as_view(),name='get all clinic moderator'),
+    path('assignclinichealth/',views.AssignClinicToHealthCenterCreateView.as_view(), name="assign clinic to health care center"),
+    path('assignclinichealth/update/<int:pk>',views.AssignClinicToHealthCenterUpdateView.as_view(), name="update assign clinic to health care center"),
+    path('assignclinichealth/<int:health_id>',views.AssignClinicToHealthCenterListView.as_view(), name= 'Clinics under this health center'),
+    path('assigndoctortoclinic/',views.AssignDoctorToClinkCreateView.as_view(),name="assign doctor to clinic"),
+    path('assigndoctortoclinic/update/<int:pk>',views.AssignDoctorToClinicUpdateView.as_view(), name='update assign doctor to clinic'),
+    path('assigndoctortoclinic/<int:clinic_id>',views.AssignDoctorToClinicListView.as_view(),name='get all doctors in a certen clinic'),
+]
+
+
+
+--- FILE: AccessControl\views.py ---
+
+from django.shortcuts import get_object_or_404, render
+
+from rest_framework import generics,permissions
+from .serializers import *
+from .permissions import IsDoctorUser, IsOwner,IsAdmin
+from Users.models import User
+from HealthCareCenter.models import HealthCareCenter
+from Clinic.models import Clinic
+
+class DoctorAccessRequestCreateView(generics.CreateAPIView):
+    serializer_class = DoctorAccessRequstSerlizer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsDoctorUser]
+    def perform_create(self, serializer):
+        patient_id = self.kwargs['patient_id']
+        patient = User.objects.get(id = patient_id)
+        doctor = self.request.user
+        serializer.save(doctor=doctor,patient=patient)
+
+class UpdateStatusOrActiveUpdateView(generics.UpdateAPIView):
+    queryset = DoctorAccessRequest.objects.all()
+    serializer_class = DoctorAccessRequstSerlizer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsOwner]
+
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'status','is_active'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+            raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
+    
+class GetAllRequestsListView(generics.ListAPIView):
+    serializer_class = DoctorAccessRequstSerlizer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated,IsOwner]
+
+    def get_queryset(self):
+        return DoctorAccessRequest.objects.all()
+    def get_object(self):
+        patient_id = self.kwargs['patient_id']
+        return get_object_or_404(DoctorAccessRequest,patient_id='patient_id')
+    
+
+class AssignHealthModeratorCreateView(generics.CreateAPIView):
+    serializer_class = AssignedHealthCareCenterModeratorsSerlizer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        moderator_id = self.request.data.get('moderator')
+        moderator = User.objects.get(id=moderator_id)
+        healthcarecenter_id = self.request.data.get('healthcarecenter')
+        healthcarecenter = HealthCareCenter.objects.get(id = healthcarecenter_id)
+        serializer.save(moderator=moderator,healthcarecenter=healthcarecenter)
+
+class AssignedHealthModeratorUpdateView(generics.UpdateAPIView):
+    queryset = AssignedHealthCareCenterModerators.objects.all()
+    serializer_class = AssignedHealthCareCenterModeratorsSerlizer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
+    
+class AssignedHealthModeratorListView(generics.ListAPIView):
+    serializer_class = AssignedHealthCareCenterModeratorsSerlizer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def get_queryset(self):
+        return AssignedHealthCareCenterModerators.objects.all()
+    def get_object(self):
+        return super().get_object()
+
+
+class AssignClinicModeratorCreateView(generics.CreateAPIView):
+    serializer_class = AssignClinicModeratorSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        moderator_id = self.request.data.get('moderator')
+        clinic_id = self.request.data.get('clinic')
+        moderator = User.objects.get(id = moderator_id)
+        clinic = Clinic.objects.get(id = clinic_id)
+        serializer.save(moderator = moderator, clinic = clinic)
+
+
+class AssignCLinicModeratorUpdateView(generics.UpdateAPIView):
+    queryset = AssignClinicModerators.objects.all()
+    serializer_class = AssignClinicModeratorSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
+
+class AssignedClinichModeratorListView(generics.ListAPIView):
+    serializer_class = AssignClinicModeratorSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def get_queryset(self):
+        return AssignClinicModerators.objects.all()
+    def get_object(self):
+        return super().get_object()
+    
+
+class AssignClinicToHealthCenterCreateView(generics.CreateAPIView):
+    serializer_class = AssignClinicToHealthCenterSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
+        health = HealthCareCenter.objects.get(id = self.request.data.get('health'))
+        
+        serializer.save(clinic = clinic,health=health)
+
+class AssignClinicToHealthCenterUpdateView(generics.UpdateAPIView):
+    queryset = AssignClinicToHealthCenter.objects.all()
+    serializer_class = AssignClinicToHealthCenterSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
+
+
+class AssignClinicToHealthCenterListView(generics.ListAPIView):
+    serializer_class = AssignClinicToHealthCenterSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def get_queryset(self):
+        return AssignClinicToHealthCenter.objects.filter(health_id = self.kwargs.get('health_id'))
+    def get_object(self):
+        return super().get_object()
+    
+class AssignDoctorToClinkCreateView(generics.CreateAPIView):
+    serializer_class = AssignDoctorToClinicSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        doctor = User.objects.get(id = self.request.data.get('doctor'))
+        clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
+        serializer.save(doctor = doctor,clinic = clinic)
+
+class AssignDoctorToClinicUpdateView(generics.UpdateAPIView):
+    queryset = AssignDoctorToClinic.objects.all()
+    serializer_class = AssignDoctorToClinicSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'is_active'}
+        requested_fileds = set(request.data.keys())
+        disallowed = requested_fileds - allowed_fields
+        if disallowed:
+            raise ValidationError("you dont allowed to update this fields")        
+        return super().patch(request, *args, **kwargs)
+
+class AssignDoctorToClinicListView(generics.ListAPIView):
+    serializer_class = AssignDoctorToClinicSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.AllowAny]
+    def get_queryset(self):
+        return AssignDoctorToClinic.objects.filter(clinic_id = self.kwargs.get('clinic_id'))
+    def get_object(self):
+        return super().get_object()
+
+
+
+--- FILE: AccessControl\__init__.py ---
+
+
+
+
+--- FILE: AI\dataFilter.py ---
+
+from __future__ import annotations
+
+import json
+import re
+import uuid
+from pathlib import Path
+from typing import List, Tuple
+
+import pandas as pd
+from tqdm import tqdm
+import os
+
+GREET_RGX = re.compile(
+    r"^(hi|hello|hey|dear|good (morning|afternoon|evening))[^\n]{0,60}\n?",
+    re.I,
+)
+
+CLOSE_RGX = re.compile(
+    r"(regards?|thank(?:s| you)|take care|hope\s+i\s+have\s+answered.*?(?:query|question).*?|let\s+me\s+know\s+if\s+i\s+can\s+assist\s+you\s+further)[^\n]*?$",
+    re.I,
+)
+EMAIL_RGX = re.compile(r"\b[\w.+-]+@\w+\.\w+\b")
+PHONE_RGX = re.compile(r"\b\d{3}[-.\s]??\d{3}[-.\s]??\d{4}\b")
+NAME_FILL = re.compile(r"\bX{2,}\b")
+AGE_RGX = re.compile(r"\b(\d{1,3})\s*(?:years?|yrs?|yr)?\s*old\b", re.I)
+EXTRA = re.compile(r"<end>")
+AGE_BINS: List[Tuple[int, int]] = [
+    (0, 5),
+    (5, 10),
+    (10, 15),
+    (15, 20),
+    (20, 30),
+    (30, 40),
+    (40, 50),
+    (50, 60),
+    (60, 70),
+    (70, 120),
+]
+
+def _age_bin(age: int) -> str:
+    for lo, hi in AGE_BINS:
+        if lo <= age < hi:
+            return f"{lo}-{hi - 1}" if hi < 120 else "70+"
+    return "UNK"
+
+
+def scrub(text: str) -> str:
+    """Remove PII & boiler‑plate but keep clinical meaning."""
+    txt = str(text).replace("<start>", "")  # system token
+    txt = EMAIL_RGX.sub("[EMAIL]", txt)
+    txt = PHONE_RGX.sub("[PHONE]", txt)
+    txt = NAME_FILL.sub("[NAME]", txt)
+    txt = AGE_RGX.sub(lambda m: f"[AGE:{_age_bin(int(m.group(1)))}]", txt)
+    txt = GREET_RGX.sub("", txt)
+    txt = CLOSE_RGX.sub("", txt)
+    txt = re.sub(r"\s+", " ", txt).strip()
+    txt = EXTRA.sub("", txt)
+    return txt
+
+def filter_chat_csv():
+    min_q = 10
+    max_q = 200
+    min_a = 20
+    max_a = 250
+    export_format = "csv"
+    patient_col = "Patient"
+    doctor_col = "Doctor"
+    csv_path = os.path.join(os.path.dirname(__file__), "Data", "patient_doctor.csv")
+    out_path = os.path.join(os.path.dirname(__file__), "Data", "patient_doctor_filtered.csv")
+    
+    
+    df = pd.read_csv(csv_path).copy()    
+    if patient_col not in df.columns or doctor_col not in df.columns:
+        raise ValueError(
+            f"Could not find '{patient_col}' or '{doctor_col}' in columns: {df.columns}"
+        )
+    df = df[[patient_col, doctor_col]].rename(
+        columns={patient_col: "patient", doctor_col: "doctor"}
+    )
+
+    tqdm.pandas(desc="Scrubbing")
+    df["patient"] = df["patient"].progress_apply(scrub)
+    df["doctor"] = df["doctor"].progress_apply(scrub)
+
+    df["q_len"] = df["patient"].str.split().str.len()
+    df["a_len"] = df["doctor"].str.split().str.len()
+    df = df.query(
+        "@min_q <= q_len <= @max_q and @min_a <= a_len <= @max_a"
+    ).reset_index(drop=True)
+
+    df = df.drop_duplicates(["patient", "doctor"]).reset_index(drop=True)
+
+
+    def chunk_text(text: str, max_words: int) -> list[str]:
+        words = text.split()
+        return [" ".join(words[i : i + max_words]) for i in range(0, len(words), max_words)]
+
+    rows: list[dict[str, str]] = []
+    for _, row in df.iterrows():
+        q_chunks = chunk_text(row["patient"], 200)
+        a_chunks = chunk_text(row["doctor"], 250)
+        for qc, ac in zip(q_chunks, a_chunks):
+            rows.append({"patient": qc, "doctor": ac})
+
+    clean_df = pd.DataFrame(rows)
+    out_path = Path(out_path)
+    clean_df.to_csv(out_path, index=False)
+    print(f"✅ Saved {len(clean_df)} cleaned Q‑A pairs → {out_path}")
+
+
+if __name__ == "__main__":
+    filter_chat_csv()
+
+
+
+
+
+
+--- FILE: AI\loader.py ---
+
+from pathlib import Path
+import pandas as pd
+from tqdm import tqdm
+import openai
+from PalClinic.settings import EMBEDDING_MODEL,OPENAI_API_KEY
+from AI.models import Embedding
+
+def load_embeddings():
+    openai.api_key = OPENAI_API_KEY
+    data_path = Path(__file__).resolve().parent / "Data" / "patient_doctor_filtered.csv"
+    data = pd.read_csv(data_path)
+    doctor = data["doctor"].tolist()
+    patient = data["patient"].tolist()
+    BATCH = 1000
+
+    for i in tqdm(range(0,len(patient),BATCH), desc="embedding"):
+        batch_patient = patient[i:i+BATCH]
+        batch_doctor = doctor[i:i+BATCH]
+
+        vectors = openai.embeddings.create(
+            model= EMBEDDING_MODEL,
+            input= batch_patient
+        ).data
+
+        vectors = [v.embedding for v in vectors]
+
+        Embedding.objects.bulk_create([
+            Embedding(
+                patient = batch_patient[j],
+                doctor = batch_doctor[j],
+                embedding = vectors[j]
+            )
+            for j in range(len(batch_patient))],
+            batch_size= BATCH
+        )
+    
+    
+    print("✅ done – inserted", len(patient), "rows")
+
+
+--- FILE: AI\models.py ---
+
+from django.db import models
+from pgvector.django import VectorField, IvfflatIndex
+
+class Embedding(models.Model):
+    patient     = models.TextField()
+    doctor   = models.TextField()
+    embedding  = VectorField(dimensions=1536)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            IvfflatIndex(                    
+                fields=["embedding"],
+                name="chat_embed_ivf_cos",
+                opclasses=["vector_cosine_ops"],
+            ),
+        ]
+
+
+
+--- FILE: AI\prompt.py ---
+
+SYSTEM_PROMPT = (
+    "you are a medical consultant work at PalClinic application"
+    "your job is help patient with useful responses"
+    "the massage structure will be"
+    "system : it will be this massage"
+    "history: will contains the chat history between you and the patient and this for keep you aware and realism through your responses"
+    "sample: it is a conversation sample between real patient and doctor the patient query very very similar to your patient query so u can take it as a base information while you response to the patient"
+    "be kind and descriptive with your response and behave with doctor manners "   
+)
+
+
+
+--- FILE: AI\retriever.py ---
+
+from .models import Embedding
+from pgvector.django import CosineDistance
+import openai
+from PalClinic.settings import OPENAI_API_KEY,EMBEDDING_MODEL
+openai.api_key = OPENAI_API_KEY
+def retrieve_similar(query: str, k=5):
+    query_vector = openai.embeddings.create(
+        model= EMBEDDING_MODEL, input=query).data[0].embedding
+
+    hits = (
+        Embedding.objects
+        .annotate(score=CosineDistance("embedding", query_vector))
+        .order_by("score")[:k]
+    )
+    return [(h.patient, h.doctor, float(h.score)) for h in hits]
+
+
+if __name__ == "__main__":
+    import django
+    import os
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "PalClinic.settings")
+    django.setup()
+
+    results = retrieve_similar("I feel anxious and dizzy", k=3)
+    for r in results:
+        print(r)
+
+
+
+--- FILE: AI\tasks.py ---
+
+from celery import shared_task,chain
+from django.core import management
+from pathlib import Path
+from chat.serializers import MessageSerializer
+from .dataFilter import filter_chat_csv
+from .loader import load_embeddings as loader
+from chat.models import Room,Message
+from Users.models import User
+from PalClinic.settings import OPENAI_API_KEY
+from channels.layers import get_channel_layer
+from django.contrib.auth import get_user_model
+from chat.utils import get_chat_history
+from asgiref.sync import async_to_sync
+from .prompt import SYSTEM_PROMPT
+from .retriever import retrieve_similar
+from .translator import translate_arabic_to_english
+import openai
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+
+
+def _get_bot():
+    """Fetch (or create) the assistant user lazily and *inside* a thread-safe context."""
+    User = get_user_model()
+    return User.objects.get_or_create(
+        email="assistant@palclinic.ai",
+        defaults=dict(username="GPT-Assistant", role="assistant", password="!bot!")
+    )[0]    
+
+@shared_task
+def dump_patient_doctor_csv():
+
+    dest = Path("/app/AI/Data/patient_doctor.csv")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    management.call_command(
+        "export_patient_doctor_csv",
+        dest=str(dest),
+    )
+@shared_task
+def filter_patient_doctor_csv():
+    filter_chat_csv()
+
+@shared_task
+def load_embeddings():
+    loader()
+
+
+
+
+@shared_task
+def gpt_reply(room_id, user_msg_id):
+    room  = Room.objects.get(id=room_id)
+    bot   = _get_bot()  
+    msg = translate_arabic_to_english(Message.objects.get(id=user_msg_id))
+
+    system = SYSTEM_PROMPT
+    history = get_chat_history(room)
+    sample = retrieve_similar(msg,1)
+
+    messages = [
+        f"""system: {system}
+    history: {history}
+    sample: {sample}"""
+    ]
+
+    print(messages)
+    reply = client.chat.completions.create(      # new call
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.7
+    ).choices[0].message.content
+
+    reply_msg = Message.objects.create(room=room, author=bot, body=reply)
+
+    # broadcast assistant reply
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"room_{room.name}",
+        {"type": "chat.message",
+         "message": MessageSerializer(reply_msg).data}
+    )
+
+
+--- FILE: AI\translator.py ---
+
+from transformers import MarianMTModel, MarianTokenizer
+
+model_name = "Helsinki-NLP/opus-mt-ar-en"
+tokenizer = MarianTokenizer.from_pretrained(model_name)
+model = MarianMTModel.from_pretrained(model_name)
+
+def translate_arabic_to_english(text: str) -> str:
+    """Translate Arabic text to English using MarianMT."""
+    tokens = tokenizer([text], return_tensors="pt", padding=True, truncation=True)
+    translated = model.generate(**tokens)
+    result = tokenizer.decode(translated[0], skip_special_tokens=True)
+    return result
+
+
+
+--- FILE: Appointment\admin.py ---
+
+from django.contrib import admin
+
+# Register your models here.
+
+
+
+--- FILE: Appointment\apps.py ---
+
+from django.apps import AppConfig
+
+
+class AppointmentConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'Appointment'
+
+
+
+--- FILE: Appointment\models.py ---
+
+from django.db import models
+from Clinic.models import Clinic
+from Users.models import User
+
+class Appointment(models.Model):
+    class Status(models.TextChoices):
+        COMPLETED = 'completed'
+        PENDING = 'pending'
+        CANCELED = 'canceled'
+
+    date = models.DateField(max_length=20)
+    time = models.TimeField(max_length=50)
+    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
+    doctor = models.ForeignKey(User,on_delete=models.CASCADE,limit_choices_to={"role":"doctor"})
+    status = models.CharField(max_length=10,choices=Status.choices,default=Status.PENDING)
+    available = models.BooleanField(max_length= 7, default= True)
+    created_at = models.DateTimeField(auto_now_add=True,max_length=50)
+    updated_at = models.DateTimeField(auto_now_add=True,max_length=50)
+
+class AppointmentBooking(models.Model):
+    appointment = models.ForeignKey(Appointment,on_delete=models.CASCADE,limit_choices_to={"available": True}, null=True)
+    patient = models.ForeignKey(User,on_delete=models.CASCADE,limit_choices_to={"role":"patient"},null=True)
+
+
+
+
+
+--- FILE: Appointment\serializers.py ---
+
+from sqlite3 import Date
+from django.forms import ValidationError
+from django.utils import timezone
+from rest_framework import serializers
+from .models import Appointment,AppointmentBooking
+from Clinic.models import Clinic
+from Users.models import User
+from AccessControl.models import AssignDoctorToClinic
+
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    date = serializers.DateField(required=False)
+    time = serializers.TimeField(required=False)
+    class Meta:
+        model = Appointment
+        fields = ['id', 'date', 'time', 'clinic', 'doctor','status', 'available', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+    def validate(self, attrs):
+        request  = self.context['request']
+        instance = getattr(self, 'instance', None)
+        method   = request.method
+    
+        # 1. Required fields on POST
+        if method == 'POST':
+            if 'date' not in attrs or 'time' not in attrs:
+                raise ValidationError("Both 'date' and 'time' are required.")
+    
+        # 2. Past‑date / past‑time guard
+        current_date = attrs.get('date',  getattr(instance, 'date',  None))
+        current_time = attrs.get('time',  getattr(instance, 'time',  None))
+    
+        if current_date and current_time:
+            now = timezone.localtime()
+            if current_date < now.date():
+                raise ValidationError("The date can't be in the past.")
+            if current_date == now.date() and current_time < now.time():
+                raise ValidationError("The time can't be in the past.")
+    
+        # 3. Double‑booking guard
+        clinic  = attrs.get('clinic',  getattr(instance, 'clinic',  None))
+        doctor  = attrs.get('doctor',  getattr(instance, 'doctor',  None))
+    
+        if current_date and current_time and clinic and doctor:
+            clash = (
+                Appointment.objects
+                .filter(clinic=clinic, doctor=doctor,
+                        date=current_date, time=current_time)
+                .exclude(id=getattr(instance, 'id', None))
+                .exists()
+            )
+            if clash:
+                raise ValidationError("Another appointment is already booked for that slot.")
+    
+        # 4. Check doctor‑clinic assignment
+        if clinic and doctor and not AssignDoctorToClinic.objects.filter(
+                clinic=clinic, doctor=doctor, is_active=True).exists():
+            raise ValidationError("This doctor is not assigned to that clinic.")
+    
+        return attrs
+        
+class AppointmentBookingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppointmentBooking
+        fields = ['appointment']
+    def validate(self, attrs):
+        patient = self.context["request"].user
+        appointment: Appointment = attrs["appointment"]
+        if not appointment.available:
+            raise ValidationError("This appointment is already booked.")
+        if AppointmentBooking.objects.filter(
+            patient=patient,
+            appointment__date=appointment.date,
+            appointment__time=appointment.time
+        ).exists():
+            raise ValidationError("You already have an appointment at that time.")
+        if AppointmentBooking.objects.filter(
+                patient=patient,
+                appointment__date=appointment.date,
+                appointment__doctor=appointment.doctor).exists():
+            raise serializers.ValidationError("You’re already booked with this doctor that day.")
+        return attrs
+    
+class AppointmentBookedListSerializer(serializers.ModelSerializer):
+    appointment = AppointmentSerializer(read_only =True)
+    class Meta:
+        model = AppointmentBooking
+        fields = ['appointment']
+
+
+
+
+
+
+--- FILE: Appointment\tests.py ---
+
+from django.test import TestCase
+
+# Create your tests here.
+
+
+
+--- FILE: Appointment\urls.py ---
+
+from django.urls import path
+from . import views
+urlpatterns = [
+    path('create/', views.AppointmentCreateView.as_view(), name = 'cerate appointment'),
+    path('<int:clinic_id>/',views.AppointmentsListView.as_view(),name='get all appointments for a specific clinic'),
+    path('update/<int:pk>/',views.AppointmentUpdateView.as_view(),name= 'update appointment'),
+    path('delete/<int:pk>/',views.AppointmentDestroyView.as_view(),name='delete an appointment'),
+    path('book/<int:appointment_id>/',views.AppointmentBookCreateView.as_view(),name= 'Book an appointment'),
+    path('list/',views.AppointmentBookListView.as_view(),name='list of appointments for users{doctor,patient}'),
+]
+
+
+--- FILE: Appointment\views.py ---
+
+from rest_framework import generics,permissions
+from django.db import transaction,models
+from AccessControl.permissions import IsTheClinicModerator,IsClinicModerator,IsTheAppointmentModerator,IsPatient
+from .serializers import *
+from Users.models import User
+from Clinic.models import Clinic
+from .models import Appointment
+
+class AppointmentCreateView(generics.CreateAPIView):
+    serializer_class = AppointmentSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsTheClinicModerator]
+    def perform_create(self, serializer):
+        doctor = User.objects.get(id = self.request.data.get('doctor'))
+        clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
+        return serializer.save(doctor=doctor,clinic=clinic)
+
+
+class AppointmentsListView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated, IsClinicModerator, IsTheClinicModerator ]
+    def get_queryset(self):
+        return Appointment.objects.filter(clinic = self.kwargs.get("clinic_id"))
+    def get_object(self):
+        return super().get_object()
+
+    
+class AppointmentUpdateView(generics.UpdateAPIView): 
+    serializer_class = AppointmentSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsClinicModerator,IsTheAppointmentModerator]
+    def get_queryset(self):        
+        return Appointment.objects.filter(id=self.kwargs.get('pk'))
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'date','time','doctor','available','updated_at'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+            raise ValidationError('The Fields you are trying to edit is not allowed')
+        return super().patch(request, *args, **kwargs)
+
+class AppointmentDestroyView(generics.DestroyAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    http_method_names = ['delete']
+    permission_classes = [permissions.IsAuthenticated,IsClinicModerator,IsTheAppointmentModerator]
+    
+class AppointmentBookCreateView(generics.CreateAPIView):
+    serializer_class = AppointmentBookingSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsPatient]
+
+    def get_serializer(self, *args, **kwargs):
+        kwargs["data"] = {"appointment": self.kwargs["appointment_id"]}
+        return super().get_serializer(*args, **kwargs)
+    @transaction.atomic
+    def perform_create(self, serializer):
+        appointment = Appointment.objects.select_for_update().get(pk = self.kwargs['appointment_id'])
+        if not appointment.available:
+            raise ValidationError('The Appointment is already booked')
+        appointment.available = False
+        appointment.save(update_fields=['available'])
+        patient = self.request.user
+        return serializer.save(appointment = appointment,patient = patient)
+    
+class AppointmentBookListView(generics.ListAPIView):    
+    http_method_names = ['get']
+    permission_classes = [permissions.IsAuthenticated]
+    def get_serializer_class(self):
+        role = self.request.user.role
+        if role == 'doctor':
+            return AppointmentSerializer
+        if role == 'patient':
+            return AppointmentBookedListSerializer
+    def get_queryset(self):
+        if self.request.user.role == 'patient':
+            return AppointmentBooking.objects.filter(patient = self.request.user)
+        if self.request.user.role == 'doctor':
+            return Appointment.objects.filter(doctor = self.request.user, available = False)
+        
+    def get_object(self):
+        return super().get_object()
+    
+
+
+
+
+--- FILE: Appointment\__init__.py ---
+
+
+
+
+--- FILE: chat\admin.py ---
+
+from django.contrib import admin
+
+# Register your models here.
+
+
+
+--- FILE: chat\apps.py ---
+
+from django.apps import AppConfig
+
+
+class ChatConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'chat'
+
+
+
+--- FILE: chat\consumers.py ---
+
+from AI.tasks import gpt_reply
+import json
+from urllib.parse import parse_qs
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
+from rest_framework_simplejwt.tokens import UntypedToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from django.contrib.auth import get_user_model
+
+from .utils import get_or_create_private_room
+from .models import Room, Message
+from .serializers import MessageSerializer
+
+User = get_user_model()
+
+class ChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # 1️  authenticate
+        token = parse_qs(self.scope["query_string"].decode()).get("token", [""])[0]
+        self.user = await self._authenticate(token)
+        if isinstance(self.user, AnonymousUser):
+            await self.close();  return
+
+        # 2️  decide room
+        raw_room = self.scope['url_route']['kwargs']['room_name']
+        if raw_room == "assist":
+            # one-on-one room → ensure / map to unique name
+            room_obj = await database_sync_to_async(get_or_create_private_room)(self.user)
+            self.room_name = room_obj.name          # e.g. assist-42
+        else:
+            self.room_name = raw_room
+
+        self.room_group_name = f"room_{self.room_name}"
+
+        # 3️  join
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        body = data.get("message", "")
+
+        msg = await self._create_message(body)  # saves user msg
+
+        # broadcast user msg
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {"type": "chat.message", "message": MessageSerializer(msg).data}
+        )
+
+        # 🚀 if room is assistant room, enqueue GPT task
+        if self.room_name.startswith("assist-"):
+            gpt_reply.delay(msg.room_id, msg.id) 
+
+    async def chat_message(self, event):
+        await self.send(text_data=json.dumps(event['message']))
+
+    # ---------- helpers ----------
+    @database_sync_to_async
+    def _create_message(self, body):
+        room, _ = Room.objects.get_or_create(name=self.room_name)
+        return Message.objects.create(room=room, author=self.user, body=body)
+
+    @database_sync_to_async
+    def _authenticate(self, raw_token):
+        try:
+            validated = UntypedToken(raw_token)        
+            return User.objects.get(id=validated["user_id"])
+        except (TokenError, InvalidToken, User.DoesNotExist):
+            return AnonymousUser()
+        
+class Echo(AsyncWebsocketConsumer):
+    async def connect(self):
+        await self.accept()
+    async def receive(self, text_data):
+        await self.send(text_data=f"echo: {text_data}")
+
+
+--- FILE: chat\models.py ---
+
+from django.db import models
+from Users.models import User
+
+
+class Room(models.Model):
+    name = models.CharField(max_length=255)
+    participants = models.ManyToManyField(User, related_name="rooms")
+
+    def __str__(self):
+        return self.name
+
+
+class Message(models.Model):
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+
+--- FILE: chat\routing.py ---
+
+from django.urls import re_path
+from . import consumers
+
+websocket_urlpatterns = [
+    # ws://host/ws/chat/<room_name>/?token=<jwt>
+    re_path(r'ws/chat/(?P<room_name>\w+)/$', consumers.ChatConsumer.as_asgi()),
+]
+
+
+
+--- FILE: chat\serializers.py ---
+
+from rest_framework import serializers
+from .models import Room, Message
+
+class RoomSerializer(serializers.ModelSerializer):
+    last_message = serializers.SerializerMethodField()
+    class Meta:
+        model = Room
+        fields = ["id", "name", "last_message"]
+        read_only_fields = ["id"]
+
+    def get_last_message(self, obj):
+        message = obj.messages.last()
+        return MessageSerializer(message).data if message else None
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ["id", "room", "author", "body", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+
+--- FILE: chat\tests.py ---
+
+from django.test import TestCase
+
+# Create your tests here.
+
+
+
+--- FILE: chat\urls.py ---
+
+from django.urls import path
+from .views import RoomCreateView, RoomListView, MessageCreateView, MessageListView
+
+urlpatterns = [
+    path("rooms/", RoomListView.as_view(), name="room-list"),
+    path("rooms/create/", RoomCreateView.as_view(), name="room-create"),
+    path("rooms/<int:pk>/messages/", MessageListView.as_view(), name="message-list"),
+    path("rooms/<int:pk>/messages/create/", MessageCreateView.as_view(), name="message-create"),
+]
+
+
+
+
+--- FILE: chat\utils.py ---
+
+from chat.models import Room
+from django.contrib.auth import get_user_model
+from chat.models import Message
+User = get_user_model()
+BOT_ID = User.objects.get(email="assistant@palclinic.ai").id
+
+def get_or_create_private_room(user) -> Room:
+    """
+    Returns the 1-on-1 assistant room for `user`,
+    creating it and adding the bot participant if needed.
+    """
+    room_name = f"assist-{user.id}"
+    room, _ = Room.objects.get_or_create(name=room_name)
+    if not room.participants.filter(id=user.id).exists():
+        room.participants.add(user)
+    if not room.participants.filter(id=BOT_ID).exists():
+        room.participants.add(BOT_ID)
+    return room
+
+
+
+def get_chat_history(room: Room, limit=20):
+    """Return last `limit` msgs in OpenAI chat format."""
+    msgs = (
+        Message.objects
+        .filter(room=room)
+        .select_related("author")
+        .order_by("-created_at")[:limit][::-1]  # chronological
+    )
+    formatted = []
+    for m in msgs:
+        role = "assistant" if getattr(m.author, "role", "") == "assistant" else "user"
+        formatted.append({"role": role, "content": m.body})
+    return formatted
+
+
+--- FILE: chat\views.py ---
+
+from django.forms import ValidationError
+from django.shortcuts import render
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+from .models import Room, Message
+from .serializers import RoomSerializer, MessageSerializer
+
+
+# POST: /chat/rooms/
+class RoomCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = RoomSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(participants=[self.request.user])
+
+
+# GET: /chat/rooms/
+class RoomListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = RoomSerializer
+
+    def get_queryset(self):
+        return self.request.user.rooms.all()
+
+# POST: /chat/rooms/<int:pk>/messages/
+class MessageCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageSerializer
+
+    def perform_create(self, serializer):
+        room = Room.objects.get(id= self.kwargs["pk"])
+        if self.request.user not in room.participants.all():
+            raise ValidationError("You are not a participant of this room")
+        serializer.save(room=room, author=self.request.user)
+
+# GET: /chat/rooms/<int:pk>/messages/
+class MessageListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageSerializer
+
+    def get_queryset(self):
+        room = Room.objects.get(id= self.kwargs["pk"])
+        if self.request.user not in room.participants.all():
+            raise ValidationError("You are not a participant of this room")
+        return Message.objects.filter(room=room)
+
+
+--- FILE: chat\__init__.py ---
+
+
+
+
+--- FILE: chat\management\commands\export_patient_doctor_csv.py ---
+
+# export_patient_doctor_csv.py
+import csv
+from pathlib import Path
+
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils.timezone import now
+
+from chat.models import Room, Message          # adjust if your app name differs
+from Users.models import User                  # contains role field
+
+
+class Command(BaseCommand):
+    """
+    Export all chat rooms to patient_doctor.csv
+    -------------------------------------------
+    • Each row has 2 columns: patient, doctor
+    • Consecutive patient lines are merged into one question
+    • First doctor message that follows becomes the answer
+    • Unanswered patient queries are still exported (doctor column empty)
+    """
+
+    help = "Export doctor–patient Q-A pairs to patient_doctor.csv"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--dest",
+            default="patient_doctor.csv",
+            help="Output CSV filename (default: patient_doctor.csv)",
+        )
+        parser.add_argument(
+            "--room",
+            type=int,
+            help="Only export a single Room ID (useful for debugging)",
+        )
+
+    @transaction.atomic
+    def handle(self, *args, **opts):
+        out_path = Path(opts["dest"]).resolve()
+        qs = Room.objects.all()
+        if opts.get("room"):
+            qs = qs.filter(pk=opts["room"])
+
+        pair_total = 0
+        with out_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Patient", "Doctor"])          # CSV header
+
+            for room in qs.iterator():
+                pt_buffer = []  # holds consecutive patient messages
+
+                msgs = (
+                    Message.objects.filter(room=room)
+                    .select_related("author")
+                    .order_by("created_at")
+                )
+
+                for msg in msgs:
+                    role = getattr(msg.author, "role", "").lower()
+
+                    # accumulate patient lines
+                    if role == "patient":
+                        pt_buffer.append(msg.body.strip())
+                        continue
+
+                    # role == doctor → flush a pair
+                    if role == "doctor":
+                        if pt_buffer:
+                            writer.writerow([" ".join(pt_buffer), msg.body.strip()])
+                            pair_total += 1
+                            pt_buffer.clear()
+                        # if no pending patient text → skip doctor message
+
+                # leftover patient text (no doctor reply yet)
+                if pt_buffer:
+                    writer.writerow([" ".join(pt_buffer), ""])
+                    pair_total += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(f"✅  Wrote {pair_total} rows → {out_path}")
+        )
+
+
+
+--- FILE: Clinic\admin.py ---
+
+from django.contrib import admin
+
+# Register your models here.
+
+
+
+--- FILE: Clinic\apps.py ---
+
+from django.apps import AppConfig
+
+
+class ClinicConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'Clinic'
+
+
+
+--- FILE: Clinic\models.py ---
+
+from django.db import models
+from django.contrib.gis.db import models as geomodels
+class Clinic(models.Model):
+    class ClinicType(models.TextChoices):
+        INDV = 'individual'
+        HCCR = 'healthcarecenter'
+    
+    name = models.CharField(max_length=50, unique=True,default="UNDEFINED")
+    clinictype = models.CharField(max_length=20,choices=ClinicType.choices, default=ClinicType.INDV)
+    address = models.TextField(max_length=100, default="UNDEFINED")
+    phoneNumber = models.CharField(max_length=15,default="UNDEFINED")
+    email = models.EmailField(max_length=100,default="UNDEFINED@UNDEFINED",unique=True)
+    location = geomodels.PointField(srid=4326, geography=True, null=True, blank=True)
+    specialties	= models.TextField(max_length=100,default="UNDEFINED")
+    operating_hours = models.JSONField(default=dict,help_text="Structured hours, e.g. {'mon': '9-5', 'tue': '10-4'}",blank=True,null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
+    # moderators
+    # announsments
+    # health care center
+    # assigned doctors
+
+
+
+
+--- FILE: Clinic\serializers.py ---
+
+from rest_framework import serializers
+from .models import Clinic
+
+class ClinicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Clinic
+        fields = ['name','clinictype','address','phoneNumber','email','location','specialties','operating_hours']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        data = self.context['request'].data
+        if Clinic.objects.filter(name = data.get('name')).exists():
+            raise ValueError({'detail':'this clinic is alredy exisits'})
+        return attrs
+
+
+--- FILE: Clinic\tests.py ---
+
+from django.test import TestCase
+
+# Create your tests here.
+
+
+
+--- FILE: Clinic\urls.py ---
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('create/',views.ClinicCreateView.as_view(),name='create_clinic'),
+    path('update/<int:pk>',views.ClinicUpdateView.as_view(),name='update_clinic'),
+    path('',views.ClinicListView.as_view(),name= "get all clinics"),
+
+]
+
+
+--- FILE: Clinic\views.py ---
+
+from django.forms import ValidationError
+from rest_framework import generics,permissions
+from AccessControl.permissions import *
+from .serializers import *
+
+class ClinicCreateView(generics.CreateAPIView):
+    serializer_class = ClinicSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        return super().perform_create(serializer)
+    
+
+class ClinicUpdateView(generics.UpdateAPIView):
+    queryset = Clinic.objects.all()
+    serializer_class = ClinicSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsClinicAllowedModeratorOrAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'clinictype','address','location','phoneNumber','email'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+            raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        return super().patch(request, *args, **kwargs)
+        
+
+class ClinicListView(generics.ListAPIView):
+    serializer_class = ClinicSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.AllowAny]
+    def get_queryset(self):
+        return Clinic.objects.all()
+    def get_object(self):
+        return super().get_object()
+
+
+
+--- FILE: Clinic\__init__.py ---
+
+
+
+
+--- FILE: HealthCareCenter\apps.py ---
+
+from django.apps import AppConfig
+
+
+class HealthcarecenterConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'HealthCareCenter'
+
+
+
+--- FILE: HealthCareCenter\models.py ---
+
+from django.db import models
+from django.contrib.gis.db import models as geomodels
+
+
+class HealthCareCenter(models.Model):
+    class TypeChoices(models.TextChoices):
+        GOV = 'Goverment'
+        PRV = 'Pricvate'
+        NP = 'None-Profit'
+    name = models.TextField(max_length=50, default="PalClinc")
+    centerType = models.CharField(max_length=12,choices=TypeChoices.choices,default=TypeChoices.GOV)
+    address = models.TextField(max_length=200, default="UNDEFINED")
+    location = geomodels.PointField(srid=4326, geography=True, null=True, blank=True) 
+    phoneNumber = models.TextField(max_length=15, default="UNDEFINED")
+    email = models.EmailField(max_length=100,default="UNDEFINED@UNDEFINED")
+    discrption = models.TextField(max_length=500,default="UNDEFINED")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
+    
+
+
+
+--- FILE: HealthCareCenter\serializers.py ---
+
+from rest_framework import serializers
+from HealthCareCenter.models import HealthCareCenter
+
+
+class HealthCareCenterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HealthCareCenter
+        fields = ['name','centerType','centerType','address','location','phoneNumber','email','discrption']
+        read_only_fields = ['created_at','updated_at']
+    def validate(self, attrs):
+        data = self.context['request'].data
+        if HealthCareCenter.objects.filter(name = data.get("name")).exists():
+            raise serializers.ValidationError("This Health Care Center is allredy exsists")
+        return attrs
+
+
+--- FILE: HealthCareCenter\urls.py ---
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('create/',views.HealthCareCenterCreateView.as_view(), name='create_health_care_center'),
+    path('update/<int:pk>',views.HealthCareCenterUpdateView.as_view(),name='update_health_care_center'),
+    path('',views.HealthCareCenterListView.as_view(),name='get_Health_Centers'),
+]
+
+
+--- FILE: HealthCareCenter\views.py ---
+
+from django.forms import ValidationError
+from rest_framework import generics, permissions
+from AccessControl.permissions import IsAdmin,IsHealthAllawoedModeratorOrAdmin
+from .serializers import HealthCareCenterSerializer
+from HealthCareCenter.models import HealthCareCenter
+
+class HealthCareCenterCreateView(generics.CreateAPIView):
+    serializer_class = HealthCareCenterSerializer
+    http_method_names = ['post']
+    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    def perform_create(self, serializer):
+        serializer.save()
+
+class HealthCareCenterUpdateView(generics.UpdateAPIView):
+    queryset = HealthCareCenter.objects.all()
+    serializer_class = HealthCareCenterSerializer
+    http_method_names = ['patch']
+    permission_classes = [permissions.IsAuthenticated,IsHealthAllawoedModeratorOrAdmin]
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'centerType','address','location','phoneNumber','email','discrption'}
+        requested_fields = set(request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+            raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
+        
+        return super().patch(request,*args,**kwargs)
+    
+class HealthCareCenterListView(generics.ListAPIView):
+    serializer_class = HealthCareCenterSerializer
+    http_method_names = ['get']
+    permission_classes = [permissions.AllowAny]
+    def get_queryset(self):
+        return HealthCareCenter.objects.all()
+    def get_object(self):
+        return super().get_object()
+
+
+--- FILE: HealthCareCenter\__init__.py ---
+
+
+
+
+--- FILE: MedicalProfile\apps.py ---
+
+from django.apps import AppConfig
+
+
+class MedicalprofileConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'MedicalProfile'
+
+
+
+--- FILE: MedicalProfile\models.py ---
+
+from django.db import models
+from django.utils import timezone
+from Users.models import User
+
+
+class MedicalProfile(models.Model):
+    patient = models.OneToOneField(User, on_delete=models.CASCADE, related_name='medical_profile')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class BasicInfo(models.Model):
+    medical_profile = models.OneToOneField(MedicalProfile, on_delete=models.CASCADE, related_name='basic_info' ,null=True, blank=True) 
+    age = models.IntegerField()
+    gender = models.CharField(max_length=10)
+    height = models.FloatField()    
+    weight = models.FloatField()
+    blood_type = models.CharField(max_length=3)
+    allergies = models.TextField(max_length=1000, null=True, blank=True)
+    chronic_conditions = models.TextField(max_length=1000, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Surgery(models.Model):
+    medical_profile = models.ForeignKey(MedicalProfile, on_delete=models.CASCADE, related_name='surgeries' ,null=True, blank=True) 
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='performed_surgeries',null=True, blank=True)
+    surgery_type = models.CharField(max_length=100)
+    description = models.TextField(max_length=1000)
+    report = models.FileField(upload_to='files/surgery_reports/')
+    surgery_date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class LabTest(models.Model):
+    medical_profile = models.ForeignKey(MedicalProfile, on_delete=models.CASCADE, related_name='lab_tests', null=True, blank=True) 
+    name = models.CharField(max_length=100,null=True, blank=True)
+    description = models.TextField(max_length=1000,null=True, blank=True)
+    results = models.FileField(upload_to='files/lab_results/',null=True, blank=True)
+    date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Treatment(models.Model):
+    medical_profile = models.ForeignKey(MedicalProfile, on_delete=models.CASCADE, related_name='treatments' ,null=True, blank=True) 
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='treatments',null=True, blank=True)
+    treatment = models.CharField(max_length=300,null=True, blank=True)
+    dosage = models.CharField(max_length=100,null=True, blank=True)
+    description = models.TextField(max_length=300,null=True, blank=True)
+    start_date = models.DateField(default=timezone.now)
+    end_date = models.DateField(null=True, blank=True)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    @property
+    def is_active(self):
+        return self.active and (self.end_date is None or self.end_date >= timezone.now().date())
+
+class DoctorNote(models.Model):
+    medical_profile = models.ForeignKey(MedicalProfile, on_delete=models.CASCADE, related_name='doctor_notes', null=True, blank=True) 
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notes',null=True, blank=True)
+    title = models.CharField(max_length=255,null=True, blank=True)
+    note = models.TextField(max_length=2000,null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+--- FILE: MedicalProfile\serializers.py ---
+
+
+from datetime import timezone
+from rest_framework import serializers
+from Users.models import User
+from Users.serializer import UserShortInfoSerlizer
+from .models import (
+    MedicalProfile,
+    BasicInfo,
+    Surgery,
+    LabTest,
+    Treatment,
+    DoctorNote
+)
+
+
+class MedicalProfileSerializer(serializers.ModelSerializer):
+    patient = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = MedicalProfile
+        fields = ['patient', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+    def validate(self, attrs):
+        request = self.context.get('request')
+        patient = request.user
+        if MedicalProfile.objects.filter(patient = patient).exists():
+            raise serializers.ValidationError({"detail": "The profile already exists."})
+        return attrs
+    
+class BasicInfoSerializer(serializers.ModelSerializer):
+    medical_profile = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = BasicInfo
+        fields = ['medical_profile', 'age', 'gender', 'height', 'weight', 'blood_type', 'allergies', 'chronic_conditions', 'created_at']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        user = self.context['request'].user
+        medical_profile_qs = MedicalProfile.objects.filter(patient=user)
+        if not medical_profile_qs.exists():
+            raise serializers.ValidationError({"detail": "The Medical Profile does not exist."})
+        medical_profile = medical_profile_qs.first()
+        if BasicInfo.objects.filter(medical_profile=medical_profile).exists():
+            raise serializers.ValidationError({"detail": "The Basic Info already exists."})
+        return attrs
+
+
+class SurgerySerializer(serializers.ModelSerializer):
+    medical_profile = serializers.PrimaryKeyRelatedField(read_only=True)
+    doctor = UserShortInfoSerlizer(read_only=True)
+    class Meta:
+        model = Surgery
+        fields = ['medical_profile', 'doctor', 'surgery_type', 'description', 'report', 'surgery_date', 'created_at']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        patient = User.objects.get(id = self.context['view'].kwargs['paitent_id'])
+        medicalprofile = MedicalProfile.objects.filter(patient = patient)
+        if not medicalprofile.exists():
+            raise serializers.ValidationError({"detail":"the medical profile does not exist"})
+        return attrs
+    
+
+
+class LabTestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabTest
+        fields = ['medical_profile', 'name', 'description', 'results', 'date', 'created_at']
+        read_only_fields = ['created_at']
+    def validate(self, attrs):
+        patient = User.objects.get(id = self.context['view'].kwargs['paitent_id'])
+        medicalprofile = MedicalProfile.objects.filter(patient = patient)
+        if not medicalprofile.exists():
+            raise serializers.ValidationError({"detail":"the medical profile does not exist"})
+        return attrs
+
+class TreatmentSerializer(serializers.ModelSerializer):
+    doctor = UserShortInfoSerlizer(read_only=True)
+    class Meta:
+        model = Treatment
+        fields = ['medical_profile', 'doctor', 'treatment', 'dosage', 'description', 'start_date', 'end_date', 'created_at']
+        read_only_fields = ['created_at', 'active']
+
+    def validate(self, data):
+        if data['end_date'] and data['end_date'] < data['start_date']:
+            raise serializers.ValidationError("End date cannot be before start date.")
+        if data['end_date'] < timezone.now().date():
+            raise serializers.ValidationError("End date cannot be in the past.")
+        return data
+    
+class DoctorNoteSerializer(serializers.ModelSerializer):
+    doctor = UserShortInfoSerlizer(read_only = True)
+    class Meta:
+        model = DoctorNote
+        fields = ['medical_profile', 'doctor', 'title', 'note', 'created_at']
+        read_only_fields = ['created_at']
+    def validate(self, data):
+        if data['end_date'] and data['end_date'] < data['start_date']:
+            raise serializers.ValidationError("End date cannot be before start date.")
+        if data['end_date'] < timezone.now().date():
+            raise serializers.ValidationError("End date cannot be in the past.")
+        return data
+
+
+
+class MedicalProfileDetailSerializer(serializers.ModelSerializer):
+    patient = UserShortInfoSerlizer(read_only=True)
+    basic_info = BasicInfoSerializer(read_only=True)
+    surgeries = SurgerySerializer(many=True, read_only=True)
+    lab_tests = LabTestSerializer(many=True, read_only=True)
+    treatments = TreatmentSerializer(many=True, read_only=True)
+    doctor_notes = DoctorNoteSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MedicalProfile
+        fields = [
+            'patient',
+            'created_at',
+            'updated_at',
+            'basic_info',
+            'surgeries',
+            'lab_tests',
+            'treatments',
+            'doctor_notes'
+        ]
+
+
+--- FILE: MedicalProfile\tasks.py ---
+
+from celery import shared_task
+from .models import Treatment
+from django.utils import timezone
+
+@shared_task
+def update_treatments_status():
+    today = timezone.now().date()
+    treatments = Treatment.objects.filter(active=True, end_date__lt=today)
+    treatments.update(active=False)
+
+
+
+--- FILE: MedicalProfile\urls.py ---
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('create/', views.MedicalProfileListCreateView.as_view(), name='medical_profile_create'),
+    path('basic_info/', views.BasicInfoListCreateView.as_view(), name='basic_info_create'),
+    path('surgery/<int:paitent_id>', views.SurgeryListCreateView.as_view(), name='surgery_create'),
+    path('lab_test/<int:paitent_id>', views.LabTestListCreateView.as_view(), name='lab_test_create'),
+    path('treatment/<int:paitent_id>', views.TreatmentListCreateView.as_view(), name='treatment_create'),
+    path('doctor_note/<int:paitent_id>', views.DoctorNoteListCreateView.as_view(), name='doctor_note_create'),
+    path('<paitent_id>', views.MedicalProfileDetailView.as_view(), name='medical_profile_detail'),
+]
+
+
+
+--- FILE: MedicalProfile\views.py ---
+
+
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions
+from .models import MedicalProfile
+from AccessControl.permissions import *
+from .serializers import  *
+
+# Authenticated Patient
+# Tested Done 3/5/2025
+class MedicalProfileListCreateView(generics.ListCreateAPIView):
+    serializer_class = MedicalProfileSerializer
+    permission_classes = [permissions.IsAuthenticated,IsPatient]
+    http_method_names = ['post']   
+    def perform_create(self, serializer):  
+        serializer.save(patient=self.request.user)
+
+# Authenticated Paitent and should be the owner
+# Tested Done 3/5/2025
+class BasicInfoListCreateView(generics.ListCreateAPIView):
+    serializer_class = BasicInfoSerializer
+    permission_classes = [permissions.IsAuthenticated,IsPatient]
+    http_method_names = ['post']
+
+    def perform_create(self, serializer):
+        paitent_id = self.request.user.id
+        medical_profile = MedicalProfile.objects.get(patient=paitent_id)
+        serializer.save(medical_profile=medical_profile)
+
+# Authenticated Doctor and allowed for a specific Patient
+# Tested Done 3/5/2025
+class SurgeryListCreateView(generics.ListCreateAPIView):
+    serializer_class = SurgerySerializer
+    permission_classes = [permissions.IsAuthenticated,IsDoctor,IsAllowedDoctor]
+    http_method_names = ['post']
+
+    def perform_create(self, serializer):
+        doctor = self.request.user
+        paitent_id = self.kwargs['paitent_id']
+        medical_profile = MedicalProfile.objects.get(patient=paitent_id)
+        serializer.save(medical_profile=medical_profile, doctor=doctor)
+
+class LabTestListCreateView(generics.ListCreateAPIView):
+    serializer_class = LabTestSerializer
+    permission_classes = [permissions.IsAuthenticated,IsDoctor,IsAllowedDoctor]
+    http_method_names = ['post']
+
+    def perform_create(self, serializer):
+        paitent_id = self.kwargs['paitent_id']
+        medical_profile = MedicalProfile.objects.get(patient=paitent_id)
+        serializer.save(medical_profile=medical_profile)
+
+class TreatmentListCreateView(generics.ListCreateAPIView):
+
+    serializer_class = TreatmentSerializer
+    permission_classes = [permissions.IsAuthenticated,IsDoctor,IsAllowedDoctor]
+    http_method_names = ['post']
+
+    def perform_create(self,serlizer):
+        doctor = self.request.user
+        paitent_id = self.kwargs['paitent_id']
+        medical_profile = MedicalProfile.objects.get(patient = paitent_id)
+        serlizer.save(medical_profile = medical_profile, doctor = doctor)
+
+class DoctorNoteListCreateView(generics.ListCreateAPIView):
+    serializer_class = DoctorNoteSerializer
+    permission_classes = [permissions.IsAuthenticated,IsDoctor,IsAllowedDoctor]
+    http_method_names = ['post']
+
+    def perform_create(self,serlizer):
+        doctor = self.request.user
+        paitent_id = self.kwargs['paitent_id']
+        medical_profile = MedicalProfile.objects.get(patient = paitent_id)
+        serlizer.save(medical_profile = medical_profile, doctor = doctor)
+    
+
+class MedicalProfileDetailView(generics.RetrieveAPIView):
+    serializer_class = MedicalProfileDetailSerializer
+    permission_classes = [permissions.IsAuthenticated,IsOwnerOrAllowedDoctor]
+    http_method_names = ['get']
+    def get_queryset(self):
+        return MedicalProfile.objects.all()
+
+    def get_object(self):
+        patient_id = self.kwargs['paitent_id']
+        return get_object_or_404(MedicalProfile, patient=patient_id)
+
+
+
+--- FILE: MedicalProfile\__init__.py ---
+
+
+
+
+--- FILE: Notifications\admin.py ---
+
+from django.contrib import admin
+
+# Register your models here.
+
+
+
+--- FILE: Notifications\apps.py ---
+
+from django.apps import AppConfig
+
+class NotificationsConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'Notifications'
+    def ready(self):
+        import Notifications.signals
+
+
+--- FILE: Notifications\consumers.py ---
+
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+class NotificationConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        user = self.scope['user']
+        if user.is_anonymous:
+            await self.close()
+            return
+        self.group = f"user_{user.id}"
+        await self.channel_layer.group_add(self.group,self.channel_name)
+        await self.accept
+
+    async def disconnect(self, code):
+        await  self.channel_layer.group_discard(self.group,self.channel_name)
+    
+    async def send_notification(self,event):
+        await self.send_json(event['data'])
+
+
+
+--- FILE: Notifications\models.py ---
+
+from django.db import models
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.conf import settings
+from django.utils import timezone
+
+
+
+class Notifications(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete= models.CASCADE,related_name="notifications",)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL,blank=True,null=True,on_delete=models.SET_NULL,related_name="actor_notifications")
+    target_ct = models.ForeignKey(ContentType,null=True,blank=True,on_delete=models.SET_NULL)
+    target_id = models.PositiveBigIntegerField(null=True,blank=True)
+    target = GenericForeignKey("target_ct","target_id")
+    verb = models.CharField(max_length=150)
+    unread = models.BooleanField(default=True)
+    timestamp = models.DateTimeField(default=timezone.now)
+    payload = models.JSONField(blank=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+    
+class DeviceToken(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="device_tokens",on_delete=models.CASCADE)
+    token       = models.CharField(max_length=255, unique=True)
+    platform    = models.CharField(max_length=10, choices=[("ios","iOS"),("android","Android")])
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    
+
+
+--- FILE: Notifications\realtime.py ---
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from .serializers import NotificationSerializer
+
+def push_notification(notification):
+    data = NotificationSerializer(notification).data
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_{notification.recipient_id}",
+        {"type": "send_notification", "data": data},
+    )
+
+
+--- FILE: Notifications\routing.py ---
+
+from django.urls import re_path
+from .consumers import NotificationConsumer
+
+websocket_urlpatterns = [
+    re_path(r"ws/notifications/$", NotificationConsumer.as_asgi()),
+]
+
+
+--- FILE: Notifications\serializers.py ---
+
+from rest_framework import serializers
+from .models import Notifications, DeviceToken
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Notifications
+        fields = "__all__"
+
+class DeviceTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = DeviceToken
+        fields = ["id", "token", "platform"]
+
+
+--- FILE: Notifications\signals.py ---
+
+# notifications/signals.py
+from django.db import models
+import logging
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from Appointment.models import Appointment
+from .models import Notifications
+from .realtime import push_notification
+from .tasks import send_mobile_push
+from Users.models import User
+from AccessControl.models import AssignClinicModerators
+
+logger = logging.getLogger(__name__)
+
+@receiver(post_save, sender=Appointment)
+def appointment_created(sender, instance, created, **kwargs):
+    if not created:
+        return
+    logger.info(f"⚡ appointment_created signal for Appointment {instance.id}")
+    moderator = AssignClinicModerators.objects.get(clinic_id = instance.clinic).moderator
+    notification = Notifications.objects.create(
+        recipient = moderator,
+        actor     = moderator,
+        verb      = "added appointment",
+        target    = instance,
+        payload   = {"appointment_id": instance.id}
+    )
+    push_notification(notification)          # Web
+    send_mobile_push.delay(str(notification.id))  # Mobile
+
+
+
+--- FILE: Notifications\tasks.py ---
+
+from celery import shared_task
+from django.conf import settings
+from pyfcm import FCMNotification
+from .models import Notifications, DeviceToken
+
+@shared_task
+def send_mobile_push(notification_id):
+    n = Notifications.objects.get(pk=notification_id)
+    tokens = list(DeviceToken.objects.filter(owner=n.recipient).values_list("token", flat=True))
+    if not tokens:
+        return
+    fcm = FCMNotification(api_key=settings.FCM_SERVER_KEY)
+    fcm.notify_multiple_devices(
+        registration_ids=tokens,
+        message_title="PalClinic",
+        message_body=n.verb,
+        data_message={"payload": n.payload},
+    )
+
+
+--- FILE: Notifications\tests.py ---
+
+from django.test import TestCase
+
+# Create your tests here.
+
+
+
+--- FILE: Notifications\urls.py ---
+
+from django.urls import path
+from . import views as v
+
+urlpatterns = [ 
+    # Notifications
+    path("", v.NotificationListView.as_view(),name="notifications-list"),
+    path("<int:pk>/", v.NotificationDetailView.as_view(), name="notifications-detail"),
+    path("<int:pk>/read/", v.NotificationMarkReadView.as_view(),name="notifications-mark-read"),
+    path("unread-count/", v.NotificationUnreadCountView.as_view(),name="notifications-unread-count"),
+    # Device tokens
+    path("device-tokens/", v.DeviceTokenListCreateView.as_view(),name="device-tokens-list-create"),
+    path("device-tokens/<int:pk>/", v.DeviceTokenDestroyView.as_view(), name="device-tokens-destroy"),
+]
+
+
+--- FILE: Notifications\views.py ---
+
+from django.forms import ValidationError
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from .models import Notifications
+from .models import Notifications,DeviceToken
+from .serializers import NotificationSerializer, DeviceTokenSerializer
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class   = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get']
+    def get_queryset(self):
+        return Notifications.objects.filter(recipient=self.request.user)
+    def get_object(self):
+        return super().get_object()
+
+
+class NotificationDetailView(generics.RetrieveAPIView):
+    serializer_class   = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get']
+    def get_queryset(self):
+        notification = self.kwargs['pk']
+        return Notifications.objects.filter(recipient = self.request.user , id = notification)
+    def get_object(self):
+        return super().get_object()
+
+
+class NotificationMarkReadView(generics.UpdateAPIView):
+    serializer_class   = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['patch']
+    def get_queryset(self):
+        return Notifications.objects.filter(recipient=self.request.user)
+    def patch(self, request, *args, **kwargs):
+        allowed_fields = {'unread'}
+        requested_fields = set(self.request.data.keys())
+        disallowed = requested_fields - allowed_fields
+        if disallowed:
+            raise ValidationError("you are not allowed to modify this")
+        return super().patch(request,*args,**kwargs)
+
+
+class NotificationUnreadCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get']
+    def get(self, request):
+        count = Notifications.objects.filter(
+            recipient=request.user, unread=True
+        ).count()
+        return Response({"unread": count})
+
+class DeviceTokenListCreateView(generics.ListCreateAPIView):
+    serializer_class   = DeviceTokenSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    def get_queryset(self):
+        return DeviceToken.objects.filter(owner=self.request.user)
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class DeviceTokenDestroyView(generics.DestroyAPIView):
+    serializer_class   = DeviceTokenSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    def get_queryset(self):
+        return DeviceToken.objects.filter(owner=self.request.user)
+
+
+
+--- FILE: Notifications\__init__.py ---
+
+
+
+
+--- FILE: PalClinic\asgi.py ---
+
+# PalClinic/asgi.py  – patched
+import os
+from django.core.asgi import get_asgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "PalClinic.settings")
+
+# 1️⃣ initialise Django first
+import django
+django.setup()
+
+# 2️⃣ now it's safe to touch app code that imports models
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
+import Notifications.routing
+import chat.routing
+
+websocket_patterns = (
+    Notifications.routing.websocket_urlpatterns
+    + chat.routing.websocket_urlpatterns
+)
+
+application = ProtocolTypeRouter(
+    {
+        "http": get_asgi_application(),                # already initialised
+        "websocket": AuthMiddlewareStack(
+            URLRouter(websocket_patterns)
+        ),
+    }
+)
+
+
+
+--- FILE: PalClinic\celery.py ---
+
+import os
+from celery import Celery
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PalClinic.settings')
+
+app = Celery('PalClinic')
+app.config_from_object('django.conf:settings', namespace='CELERY')
+app.autodiscover_tasks()
+
+
+
+--- FILE: PalClinic\settings.py ---
+
+"""
+Django settings for PalClinic project.
+
+Generated by 'django-admin startproject' using Django 5.2.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.2/topics/settings/
+
+For the full list of settings and their values, see
+https://docs.djangoproject.com/en/5.2/ref/settings/
+"""
+
+from pathlib import Path
+from datetime import timedelta
+from celery.schedules import crontab
+
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+CELERY_BEAT_SCHEDULE = {}
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'django-insecure-5dyq&d(gh0e&k!4rq5az_sb@fmuv2)r7+p9%jpldf5+4&7mc8_'
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+ALLOWED_HOSTS = []
+
+
+# Application definition
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'Users',
+    'rest_framework_simplejwt.token_blacklist', 
+    'drf_yasg',
+    'MedicalProfile',
+    'AccessControl',
+    'django_extensions',
+    'django_celery_beat',
+    'HealthCareCenter',
+    'django.contrib.gis',
+    'Clinic',
+    'Appointment',
+    'channels',
+    'Notifications.apps.NotificationsConfig',
+    'chat',
+    'AI',
+    'pgvector',
+]
+
+AUTH_USER_MODEL = 'Users.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+ALLOWED_HOSTS = ['*']
+
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+ASGI_APPLICATION = "PalClinic.asgi.application"
+CHANNEL_LAYERS = { "default": {
+      "BACKEND": "channels_redis.core.RedisChannelLayer",
+      "CONFIG": { "hosts": [("redis", 6379)] },
+}}
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'PalClinic.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'PalClinic.wsgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',  # ✅ not just 'django.db.backends.postgresql'
+        'NAME': 'palclinic_db',
+        'USER': 'palclinic_user',
+        'PASSWORD': 'palclinic_pass',
+        'HOST': 'db',
+        'PORT': '5432',
+    }
+}
+
+
+
+
+# Password validation
+# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'UTC'
+
+USE_I18N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = 'static/'
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+CELERY_BEAT_SCHEDULE = {
+    "monthly-chat-pipeline": {
+        "task": "AI.tasks.run_monthly_pipeline",
+        "schedule": timedelta(days=30),         
+        "options": {"queue": "default"},
+    },
+}
+
+from decouple import config
+
+OPENAI_API_KEY = config("OPENAI_API_KEY")
+EMBEDDING_MODEL = config("EMBEDDING_MODEL")
+
+
+
+--- FILE: PalClinic\urls.py ---
+
+"""
+URL configuration for PalClinic project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/5.2/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path,include
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="PalClinic API",
+        default_version='v1',
+        description="API documentation for PalClinic",
+        terms_of_service="https://PalClinic.com/terms/",
+        contact=openapi.Contact(email="osamanote2016@gmail.com"),
+        license=openapi.License(name="MIT License"),
+    ),
+    public=True,
+    permission_classes=[permissions.AllowAny],
+) 
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('Users/', include('Users.urls')),
+    path('MedicalProfile/', include('MedicalProfile.urls')),
+    path('AccessControl/',include('AccessControl.urls')),   
+    path('healthcarecenter/',include('HealthCareCenter.urls')),
+    path('clinic/',include('Clinic.urls')),
+    path('appointment/',include('Appointment.urls')),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'), 
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),  
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path("notifications/", include("Notifications.urls")),
+
+]
+
+
+--- FILE: PalClinic\wsgi.py ---
+
+"""
+WSGI config for PalClinic project.
+
+It exposes the WSGI callable as a module-level variable named ``application``.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
+"""
+
+import os
+
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PalClinic.settings')
+
+application = get_wsgi_application()
+
+
+
+--- FILE: PalClinic\__init__.py ---
+
+from .celery import app as celery_app
+
+__all__ = ['celery_app']
+
+
+
+--- FILE: Users\admin.py ---
+
+from django.contrib import admin
+from Users.models import User
+
+
+admin.site.register(User)   
+
+
+--- FILE: Users\apps.py ---
+
+from django.apps import AppConfig
+
+
+class UsersConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'Users'
+
+
+
+--- FILE: Users\models.py ---
+
+from django.db import models
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, role="patient", **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, role=role, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.pop('role', None)
+        return self.create_user(email, password, role='admin', **extra_fields)
+    
+
+    def create_clinic_moderator(self, email, password=None, **extra_fields):
+        return self.create_user(email, password, role='clinic_moderator', **extra_fields)
+
+    def create_doctor(self, email, password=None, **extra_fields):
+        return self.create_user(email, password, role='doctor', **extra_fields)
+
+    def create_patient(self, email, password=None, **extra_fields):
+        return self.create_user(email, password, role='patient', **extra_fields)
+
+    def create_healthcarecenter_moderator(self, email, password=None, **extra_fields):
+        return self.create_user(email, password, role='healthcarecenter_moderator', **extra_fields)
+
+
+class User(AbstractBaseUser, PermissionsMixin):
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('doctor', 'Doctor'),
+        ('patient', 'Patient'),
+        ('clinic_moderator', 'Clinic Moderator'),
+        ('healthcarecenter_moderator', 'Healthcare Center Moderator'),
+        ('assistant','Assistant')
+    )
+
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='patient')
+    phoneNumber = models.CharField(max_length=15, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['name']
+
+    objects = UserManager()
+
+    def __str__(self): 
+        return self.email
+
+
+
+--- FILE: Users\serializer.py ---
+
+from rest_framework import serializers
+from .models import User
+from django.contrib.auth import authenticate
+
+class SignUpSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'password', 'confirm_password', 'phoneNumber']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def validate(self, data):
+        if data['password'] != data['confirm_password'] :
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        if len(data['name']) > 50 :
+            raise serializers.ValidationError({"name": "Name is too long."})
+        if len(data['phoneNumber']) > 15 :
+            raise serializers.ValidationError({"phoneNumber": "Phone number is too long."})
+        if '@' not in data['email'] or '.' not in data['email'] or len(data['email']) > 50:
+            raise serializers.ValidationError({"email": "Email is not valid."})
+        return data
+
+    def create(self, validated_data):
+        validated_data.pop('confirm_password')  
+        return User.objects.create_user(**validated_data)
+
+class signInSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        user = authenticate(**data)
+        if not user:
+            raise serializers.ValidationError("Invalid credentials")
+        return user
+
+class UpdateUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'role', 'phoneNumber']
+        extra_kwargs = {
+            'email': {'required': False},
+            'name': {'required': False},
+            'role': {'required': False},
+            'phoneNumber': {'required': False},
+        }
+
+class UserShortInfoSerlizer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id","name"]
+
+
+
+--- FILE: Users\urls.py ---
+
+from django.urls import path
+from .views import signIn, signUp, signOut, deleteUser, updateUser,refresh_token
+urlpatterns = [
+    path('signIn/', signIn, name="signIn"),
+    path('signUp/', signUp, name="signUp"),
+    path('signOut/', signOut, name="signOut"),
+    path('<int:user_id>', deleteUser, name="deleteUser"),
+    path('<int:user_id>', updateUser, name="updateUser"),
+    path('token/refresh/', refresh_token, name='token_refresh'),
+]
+
+
+--- FILE: Users\views.py ---
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+from .models import User
+from AccessControl.permissions import IsAdmin, IsPatient, IsDoctor, IsClinicModerator, IsHealthcareCenterModerator, IsLabModerator
+from .serializer import SignUpSerializer, signInSerializer, UpdateUserSerializer
+
+
+@api_view(['POST'])
+def signUp(request):
+    serializer = SignUpSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def signIn(request):
+    serializer = signInSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.validated_data 
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "id": user.id,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "role": user.role,
+            "email": user.email,
+        }, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def signOut(request):
+    try:
+        refresh_token = request.data.get('refresh')
+        token = RefreshToken(refresh_token)
+        token.blacklist()
+        return Response({"message": "Logged out successfully"}, status=status.HTTP_205_RESET_CONTENT)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAdmin])
+def deleteUser(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        user.delete()
+        return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
+def updateUser(request, user_id):
+    if request.user.role != "admin" and request.user.id != user_id:
+        return Response(
+            {"error": "You do not have permission to update this user."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    if request.user.role != "admin" and "role" in request.data:
+        return Response({"error": "Only admins can change roles."}, status=403)
+    try:
+        user = User.objects.get(id=user_id)
+        serializer = UpdateUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+def refresh_token(request):
+    refresh_token = request.data.get('refresh')
+
+    if not refresh_token:
+        return Response({"error": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Decode the refresh token
+        token = RefreshToken(refresh_token)
+
+        # Generate a new access token using the refresh token
+        access_token = str(token.access_token)
+
+        return Response({
+            "access": access_token,
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": "Invalid refresh token."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+--- FILE: Users\__init__.py ---
+
+
+
+
+--- FILE: Users\management\__init__.py ---
+
+
+
+
+--- FILE: Users\management\commands\seed_users.py ---
+
+from django.core.management.base import BaseCommand
+from Users.models import User
+from django.contrib.auth.hashers import make_password
+import random
+
+class Command(BaseCommand):
+    help = 'Seed the database with test users (admin, doctors, patients)'
+
+    def handle(self, *args, **kwargs):
+        # Create Healthcare Center Moderators
+        for i in range(1, 3):
+            User.objects.create_healthcarecenter_moderator(
+                email=f"healthmod{i}@palclinic.com",
+                password="admin123",
+                name=f"Health Mod {i}",
+                phoneNumber=f"+97059200020{i}"
+            )
+            self.stdout.write(self.style.SUCCESS(f"🏥 Health Center Moderator {i} created."))
+
+        # Create Clinic Moderators
+        for i in range(1, 4):
+            User.objects.create_clinic_moderator(
+                email=f"clinicmod{i}@palclinic.com",
+                password="admin123",
+                name=f"Clinic Mod {i}",
+                phoneNumber=f"+97059200030{i}"
+            )
+            self.stdout.write(self.style.SUCCESS(f"🏨 Clinic Moderator {i} created."))
+        # if not User.objects.filter(email="admin@example.com").exists():
+        #     User.objects.create_superuser(
+        #         name="Admin User",
+        #         email="admin@example.com",
+        #         password="admin1234",
+        #         role="admin",
+        #         phoneNumber="0000000000",
+        #     )
+        #     self.stdout.write(self.style.SUCCESS("✅ Admin user created."))
+
+        # # Create doctors
+        # for i in range(1, 6):
+        #     email = f"doctor{i}@example.com"
+        #     if not User.objects.filter(email=email).exists():
+        #         User.objects.create_user(
+        #             name=f"Doctor {i}",
+        #             email=email,
+        #             password="doctor1234",
+        #             role="doctor",
+        #             phoneNumber=f"05900000{i}",
+        #         )
+        #         self.stdout.write(self.style.SUCCESS(f"👨‍⚕️ Doctor {i} created."))
+
+        # # Create patients
+        # for i in range(1, 11):
+        #     email = f"patient{i}@example.com"
+        #     if not User.objects.filter(email=email).exists():
+        #         User.objects.create_user(
+        #             name=f"Patient {i}",
+        #             email=email,
+        #             password="patient1234",
+        #             role="patient",
+        #             phoneNumber=f"05600000{i}",
+        #         )
+        #         self.stdout.write(self.style.SUCCESS(f"🧑‍⚕️ Patient {i} created."))
+
+        self.stdout.write(self.style.SUCCESS("🎉 All users seeded successfully."))
+
+
+
+--- FILE: Users\management\commands\__init__.py ---
+
+
+

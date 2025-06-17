@@ -51,4 +51,4 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 class UserShortInfoSerlizer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id","name"]
+        fields = ["id","name",'role']

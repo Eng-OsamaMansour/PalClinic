@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { BASE_URL } from "./config";
+import { BASE_URL } from "./Config";
 
 export const getAccessToken = async () =>
   await SecureStore.getItemAsync("accessToken");

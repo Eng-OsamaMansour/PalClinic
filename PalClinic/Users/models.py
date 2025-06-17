@@ -38,6 +38,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('patient', 'Patient'),
         ('clinic_moderator', 'Clinic Moderator'),
         ('healthcarecenter_moderator', 'Healthcare Center Moderator'),
+        ('assistant','Assistant')
     )
 
     name = models.CharField(max_length=100)

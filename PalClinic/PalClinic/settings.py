@@ -11,10 +11,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
+from celery.schedules import crontab
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+CELERY_BEAT_SCHEDULE = {}
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -49,6 +52,11 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'Clinic',
     'Appointment',
+    'channels',
+    'Notifications.apps.NotificationsConfig',
+    'chat',
+    'AI',
+    'pgvector',
 ]
 
 AUTH_USER_MODEL = 'Users.User'
@@ -64,6 +72,11 @@ ALLOWED_HOSTS = ['*']
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+ASGI_APPLICATION = "PalClinic.asgi.application"
+CHANNEL_LAYERS = { "default": {
+      "BACKEND": "channels_redis.core.RedisChannelLayer",
+      "CONFIG": { "hosts": [("redis", 6379)] },
+}}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -152,3 +165,17 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+CELERY_BEAT_SCHEDULE = {
+    "monthly-chat-pipeline": {
+        "task": "AI.tasks.run_monthly_pipeline",
+        "schedule": timedelta(days=30),         
+        "options": {"queue": "default"},
+    },
+}
+
+from decouple import config
+
+OPENAI_API_KEY = config("OPENAI_API_KEY")
+EMBEDDING_MODEL = config("EMBEDDING_MODEL")

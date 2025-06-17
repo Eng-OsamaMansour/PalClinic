@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   db:
-    image: postgis/postgis:15-3.3
+    build: ./postgres    
     container_name: palclinic_db
     environment:
       POSTGRES_DB: palclinic_db
@@ -18,18 +18,23 @@ services:
     container_name: palclinic_redis
 
   web:
-    build: .
-    container_name: palclinic_backend
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
-    volumes:
-      - .:/app
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - redis
+   build: .
+   container_name: palclinic_backend
+   command: >
+    sh -c "
+      set -e &&
+      echo 'Running migrations...' &&
+      python manage.py migrate &&
+      echo 'Starting Daphne server...' &&
+      daphne -b 0.0.0.0 -p 8000 PalClinic.asgi:application
+    "
+   volumes:
+     - .:/app
+   ports:
+     - '8000:8000'
+   depends_on:
+     - db
+     - redis
 
   celery:
     build: .

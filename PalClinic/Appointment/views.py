@@ -82,4 +82,16 @@ class AppointmentBookListView(generics.ListAPIView):
     def get_object(self):
         return super().get_object()
     
-
+class AppointmentUnBookView(generics.DestroyAPIView):
+    serializer_class   = AppointmentBookingSerializer
+    permission_classes = [permissions.IsAuthenticated, IsPatient]
+    http_method_names  = ['delete']
+    
+    lookup_field = "appointment_id"    
+    def get_queryset(self):
+        return AppointmentBooking.objects.filter(patient=self.request.user)
+    
+    def perform_destroy(self, instance):
+        instance.appointment.available = True
+        instance.appointment.save(update_fields=["available"])
+        instance.delete()

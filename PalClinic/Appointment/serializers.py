@@ -9,48 +9,63 @@ from AccessControl.models import AssignDoctorToClinic
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.name', read_only=True)
+    clinic_name = serializers.CharField(source='clinic.name', read_only=True)
+    print(doctor_name)
+    print(clinic_name)
+
     date = serializers.DateField(required=False)
     time = serializers.TimeField(required=False)
+
     class Meta:
         model = Appointment
-        fields = ['id', 'date', 'time', 'clinic', 'doctor','status', 'available', 'created_at', 'updated_at']
+        fields = [
+            'id', 'date', 'time', 'clinic', 'clinic_name',
+            'doctor', 'doctor_name', 'status', 'available',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['created_at', 'updated_at']
     def validate(self, attrs):
-        request = self.context['request']
-        method  = request.method
-        if method in ('POST'):
+        request  = self.context['request']
+        instance = getattr(self, 'instance', None)
+        method   = request.method
+    
+        # 1. Required fields on POST
+        if method == 'POST':
             if 'date' not in attrs or 'time' not in attrs:
                 raise ValidationError("Both 'date' and 'time' are required.")
-        instance = getattr(self, 'instance', None)
-        current_date = attrs.get('date', getattr(instance, 'date', None))
-        current_time = attrs.get('time', getattr(instance, 'time', None))
+    
+        # 2. Past‑date / past‑time guard
+        current_date = attrs.get('date',  getattr(instance, 'date',  None))
+        current_time = attrs.get('time',  getattr(instance, 'time',  None))
+    
         if current_date and current_time:
             now = timezone.localtime()
             if current_date < now.date():
                 raise ValidationError("The date can't be in the past.")
             if current_date == now.date() and current_time < now.time():
                 raise ValidationError("The time can't be in the past.")
-        if 'date' in attrs and 'time' in attrs:
-            clinic_id  = attrs.get('clinic', getattr(instance, 'clinic_id', None))
-            doctor_id  = attrs.get('doctor', getattr(instance, 'doctor_id', None))
-            if Appointment.objects.filter(
-                doctor=doctor_id,
-                clinic=clinic_id,
-                date=current_date,
-                time=current_time
-            ).exclude(id=getattr(instance, 'id', None)).exists():
+    
+        # 3. Double‑booking guard
+        clinic  = attrs.get('clinic',  getattr(instance, 'clinic',  None))
+        doctor  = attrs.get('doctor',  getattr(instance, 'doctor',  None))
+    
+        if current_date and current_time and clinic and doctor:
+            clash = (
+                Appointment.objects
+                .filter(clinic=clinic, doctor=doctor,
+                        date=current_date, time=current_time)
+                .exclude(id=getattr(instance, 'id', None))
+                .exists()
+            )
+            if clash:
                 raise ValidationError("Another appointment is already booked for that slot.")
-        if 'clinic' in attrs and not Clinic.objects.filter(id=attrs['clinic']).exists():
-            raise ValidationError("Clinic does not exist.")
-        if 'doctor' in attrs and not User.objects.filter(id=attrs['doctor']).exists():
-            raise ValidationError("Doctor does not exist.")
-        if 'clinic' in attrs or 'doctor' in attrs:
-            clinic_id = attrs.get('clinic', getattr(instance, 'clinic_id', None))
-            doctor_id = attrs.get('doctor', getattr(instance, 'doctor_id', None))
-            if clinic_id and doctor_id and not AssignDoctorToClinic.objects.filter(
-                    clinic=clinic_id, doctor=doctor_id, is_active=True).exists():
-                raise ValidationError("This doctor is not assigned to that clinic.")
-
+    
+        # 4. Check doctor‑clinic assignment
+        if clinic and doctor and not AssignDoctorToClinic.objects.filter(
+                clinic=clinic, doctor=doctor, is_active=True).exists():
+            raise ValidationError("This doctor is not assigned to that clinic.")
+    
         return attrs
         
 class AppointmentBookingSerializer(serializers.ModelSerializer):

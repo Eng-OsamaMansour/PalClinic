@@ -75,7 +75,7 @@ class TreatmentSerializer(serializers.ModelSerializer):
     doctor = UserShortInfoSerlizer(read_only=True)
     class Meta:
         model = Treatment
-        fields = ['medical_profile', 'doctor', 'treatment', 'dosage', 'description', 'start_date', 'end_date', 'created_at']
+        fields = ['medical_profile', 'doctor', 'treatment', 'dosage', 'description', 'start_date', 'end_date', 'created_at','active']
         read_only_fields = ['created_at', 'active']
 
     def validate(self, data):

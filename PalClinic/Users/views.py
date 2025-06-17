@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .models import User
 from AccessControl.permissions import IsAdmin, IsPatient, IsDoctor, IsClinicModerator, IsHealthcareCenterModerator, IsLabModerator
-from .serializer import SignUpSerializer, signInSerializer, UpdateUserSerializer
+from .serializer import SignUpSerializer, signInSerializer, UpdateUserSerializer, UserShortInfoSerlizer
 
 
 @api_view(['POST'])
@@ -74,3 +74,33 @@ def updateUser(request, user_id):
 
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+def refresh_token(request):
+    refresh_token = request.data.get('refresh')
+
+    if not refresh_token:
+        return Response({"error": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Decode the refresh token
+        token = RefreshToken(refresh_token)
+
+        # Generate a new access token using the refresh token
+        access_token = str(token.access_token)
+
+        return Response({
+            "access": access_token,
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": "Invalid refresh token."}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_info(request):
+    user = request.user
+    serializer = UserShortInfoSerlizer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)

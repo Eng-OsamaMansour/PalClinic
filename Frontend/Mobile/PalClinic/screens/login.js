@@ -10,14 +10,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import login from "../api/login";
+import { getUserApi } from "../api/login";
 import { useNavigation } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import FlashMessage, { showMessage } from "react-native-flash-message";
+import { setUser, getUser } from "../config/UserManager";
+
 import {
   setTokens,
   getAccessToken,
   getRefreshToken,
-} from "../config/tokenManager";
+} from "../config/TokenManager";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -34,7 +37,6 @@ export default function Login() {
       });
       return;
     }
-
     const response = await login(email, password);
     const data = await response.json();
     if (!response.ok) {
@@ -68,6 +70,11 @@ export default function Login() {
     });
 
     await setTokens(data.access, data.refresh);
+    const response2 = await getUserApi();
+    const user = await response2.json();
+    if (response2.ok) {
+      await setUser(user);
+    }
     navigation.navigate("Main");
     setEmail("");
     setPassword("");

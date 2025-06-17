@@ -7,4 +7,5 @@ urlpatterns = [
     path('delete/<int:pk>/',views.AppointmentDestroyView.as_view(),name='delete an appointment'),
     path('book/<int:appointment_id>/',views.AppointmentBookCreateView.as_view(),name= 'Book an appointment'),
     path('list/',views.AppointmentBookListView.as_view(),name='list of appointments for users{doctor,patient}'),
+    path('unbook/<int:appointment_id>/',views.AppointmentUnBookView.as_view(),name='unbook an appointment'),
 ]

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "PalClinic",
-    "slug": "PalClinic",
+    "slug": "palclinic",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,6 +27,12 @@
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1a031ec1-acb5-41df-ae34-af8d441d4f9b"
+      }
+    },
+    "owner": "engosama"
   }
 }

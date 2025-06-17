@@ -15,8 +15,5 @@ class Clinic(models.Model):
     operating_hours = models.JSONField(default=dict,help_text="Structured hours, e.g. {'mon': '9-5', 'tue': '10-4'}",blank=True,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    # moderators
-    # announsments
-    # health care center
-    # assigned doctors
+
 
