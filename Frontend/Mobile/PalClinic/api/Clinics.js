@@ -1,8 +1,8 @@
 import { BASE_URL } from "../config/Config";
 
-export const getClinics = () => {
+export const getClinics = async () => {
 
-    const response = fetch(`${BASE_URL}/clinic/`,{
+    const response = await fetch(`${BASE_URL}/clinic/`,{
         method: 'GET',
         headers:{
             "Content-Type": "application/json"

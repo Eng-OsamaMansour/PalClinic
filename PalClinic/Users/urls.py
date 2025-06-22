@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import signIn, signUp, signOut, deleteUser, updateUser,refresh_token , get_user_info
+from .views import *
 urlpatterns = [
     path('signIn/', signIn, name="signIn"),
     path('signUp/', signUp, name="signUp"),
@@ -8,4 +8,7 @@ urlpatterns = [
     path('<int:user_id>', updateUser, name="updateUser"),
     path('token/refresh/', refresh_token, name='token_refresh'),
     path('me/', get_user_info, name='get_user_info'),
+    path('create_hc_moderator/', create_hc_moderator, name='create_hc_moderator'),
+    path('get_hc_moderators/',get_healthcarecenter_moderators,name='get_hc_moderators')
+
 ]

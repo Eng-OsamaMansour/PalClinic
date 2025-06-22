@@ -13,7 +13,7 @@ import HomeScreen from "../../screens/home";
 import MedicalProfileScreen from "../../screens/medicalprofile";
 import HealthCenter from "../../screens/healthCenter";
 import Notifications from "../../screens/notifications";
-import Doctors from "../../screens/doctors";
+import DoctorsRequests from "../../screens/DoctorsRequests";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -71,7 +71,7 @@ export default function TopTabNavigator2() {
         <Tab.Screen name="الملف الطبي" component={MedicalProfileScreen} />
         <Tab.Screen name="المراكز الطبية" component={HealthCenter} />
         <Tab.Screen name="الإشعارات" component={Notifications} />
-        <Tab.Screen name="الاطباء" component={Doctors} />
+        <Tab.Screen name="الاطباء" component={DoctorsRequests} />
       </Tab.Navigator>
     </View>
   );

@@ -1,13 +1,14 @@
 from rest_framework import serializers
 from .models import User
 from django.contrib.auth import authenticate
+from core.utils import generate_password
 
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
     class Meta:
         model = User
-        fields = ['email', 'name', 'password', 'confirm_password', 'phoneNumber']
+        fields = ['email', 'name', 'password', 'confirm_password', 'phoneNumber','role']
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -51,4 +52,21 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 class UserShortInfoSerlizer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id","name",'role']
+        fields = ["id","name","email",'role']
+
+
+
+class HCModeratorCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'phoneNumber']   # role + pw hidden
+
+    def create(self, validated_data):
+        pwd = generate_password()
+        user = User.objects.create_healthcarecenter_moderator(
+            password=pwd,
+            **validated_data
+        )
+        # you could send an email here
+        user._plain_password = pwd        # stash for the view’s response
+        return user

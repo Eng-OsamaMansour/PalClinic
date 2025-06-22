@@ -19,7 +19,7 @@ class AppointmentCreateView(generics.CreateAPIView):
 class AppointmentsListView(generics.ListAPIView):
     serializer_class = AppointmentSerializer
     http_method_names = ['get']
-    permission_classes = [permissions.IsAuthenticated, IsClinicModerator, IsTheClinicModerator ]
+    permission_classes = [permissions.IsAuthenticated]
     def get_queryset(self):
         return Appointment.objects.filter(clinic = self.kwargs.get("clinic_id"))
     def get_object(self):

@@ -23,11 +23,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close();  return
 
         # 2️  decide room
-        raw_room = self.scope['url_route']['kwargs']['room_name']
-        if raw_room == "assist":
-            # one-on-one room → ensure / map to unique name
-            room_obj = await database_sync_to_async(get_or_create_private_room)(self.user)
-            self.room_name = room_obj.name          # e.g. assist-42
+        raw_room = self.scope["url_route"]["kwargs"]["room_name"]
+        
+        if raw_room.startswith("assist"):
+            # pass BOTH arguments: user and the raw room name
+            room_obj = await database_sync_to_async(
+                get_or_create_private_room
+            )(self.user, raw_room)           #  ← add raw_room here
+            self.room_name = room_obj.name
         else:
             self.room_name = raw_room
 

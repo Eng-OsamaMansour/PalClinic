@@ -4,19 +4,17 @@ from chat.models import Message
 User = get_user_model()
 BOT_ID = User.objects.get(email="assistant@palclinic.ai").id
 
-def get_or_create_private_room(user) -> Room:
+def get_or_create_private_room(user, raw_name: str) -> Room:
     """
-    Returns the 1-on-1 assistant room for `user`,
-    creating it and adding the bot participant if needed.
+    raw_name will be something like assist-1334-20250618T1801
     """
-    room_name = f"assist-{user.id}"
-    room, _ = Room.objects.get_or_create(name=room_name)
-    if not room.participants.filter(id=user.id).exists():
-        room.participants.add(user)
-    if not room.participants.filter(id=BOT_ID).exists():
-        room.participants.add(BOT_ID)
-    return room
+    if not raw_name.startswith(f"assist-{user.id}"):
+        raise ValueError("Patient can only join their own assistant rooms")
 
+    room, _ = Room.objects.get_or_create(name=raw_name)
+    bot = User.objects.get(email="assistant@palclinic.ai")   # already exists
+    room.participants.add(user, bot)
+    return room
 
 
 def get_chat_history(room: Room, limit=20):

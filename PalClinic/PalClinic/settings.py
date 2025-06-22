@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from celery.schedules import crontab
+import os
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -57,6 +58,7 @@ INSTALLED_APPS = [
     'chat',
     'AI',
     'pgvector',
+    "corsheaders",
 ]
 
 AUTH_USER_MODEL = 'Users.User'
@@ -79,6 +81,8 @@ CHANNEL_LAYERS = { "default": {
 }}
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  
+    "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -87,6 +91,22 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+if DEBUG:                      # development laptop / Vite
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+else:                          # production server
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv("FRONTEND_ORIGINS", "").split(",")
+        if origin
+    ]
+CORS_ALLOW_CREDENTIALS = True   # if you send cookies or Authorization header
+
+# Keep CSRF in sync
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
 
 ROOT_URLCONF = 'PalClinic.urls'
 

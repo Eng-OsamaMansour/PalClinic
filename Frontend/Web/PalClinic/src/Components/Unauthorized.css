@@ -1,0 +1,52 @@
+/* src/components/Unauthorized.css */
+
+.unauthorized-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to right, #ff4b2b, #ff416c);
+  height: 100vh;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+  padding: 20px;
+}
+
+.unauthorized-box {
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.unauthorized-box h1 {
+  font-size: 6rem;
+  margin: 0;
+}
+
+.unauthorized-box h2 {
+  font-size: 2rem;
+  margin: 10px 0;
+}
+
+.unauthorized-box p {
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+}
+
+.unauthorized-box a {
+  display: inline-block;
+  text-decoration: none;
+  background: #fff;
+  color: #ff416c;
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.unauthorized-box a:hover {
+  background: #ffe4ec;
+}

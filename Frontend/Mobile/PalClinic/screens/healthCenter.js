@@ -1,31 +1,28 @@
-import { ScrollView, Text } from "react-native";
-import MedicalProfileCard from "../components/MedicalProfile/MedicalProfileCard";
-import { Theme } from "../assets/Theme/Theme1";
-import { getMedicalProfile } from "../api/medical_profile";
-import { getUser } from "../config/UserManager";
-import { useFocusEffect } from "@react-navigation/native";
+import { ScrollView } from "react-native";
 import { useCallback, useState } from "react";
-
-
-
-
-import { View, Text } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { getHealthCareCenters } from "../api/HealthCareCenters";
 import { getClinics } from "../api/Clinics";
+import HealthCareCard from "../components/HealthCare/HealthCareCard";
+import { Theme } from "../assets/Theme/Theme1";
+import TopTabNavigator from "../components/Structure/TopSecNav";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 export default function HealthCenter() {
-  const [HealthCareCenters,setHealthCareCenters] = useState(null);
-  const [Clinics,setClinics] = useState(null);
-  const [PrivateHealthCareCenters,setPrivateHealthCareCenters] = useState(null);
-  const [GOVHealthCareCenters,setGOVHealthCareCenters] = useState(null);
-  const [NPHealthCareCenters,setNPHealthCareCenter] = useState(null);
-
-  
-  
-
   return (
-      <View>
-        <Text>Health Center</Text>
-      </View>
+  
+      <ScrollView style={styles.container}>
+        <HealthCareCard title={"المراكز الصحية"}></HealthCareCard>
+        <HealthCareCard title={"العيادات الخاصة"}></HealthCareCard>
+      </ScrollView>
+    
   );
 }
 
+const styles = {
+  container: {
+    flex: 1,
+    backgroundColor: Theme.background,
+    padding: Theme.spacing.medium,
+  },
+};

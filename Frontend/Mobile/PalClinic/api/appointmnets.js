@@ -40,4 +40,22 @@ const cancelAppointment = async (appointmentId) => {
   return response.json();
 };
 
-export { getAppointments, cancelAppointment };
+
+
+const getClinicAppointments = async (clinic_id) => {
+  const token = await getValidAccessToken();
+
+  if (!token) throw new Error("Unauthorized");
+  const response = await fetch(`${BASE_URL}/appointment/${clinic_id}/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to Get appointments");
+  }
+  return response.json();
+};
+export { getAppointments, cancelAppointment,getClinicAppointments };

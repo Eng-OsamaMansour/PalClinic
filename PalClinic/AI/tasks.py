@@ -54,18 +54,25 @@ def gpt_reply(room_id, user_msg_id):
     bot   = _get_bot()  
     msg = Message.objects.get(id=user_msg_id)#translate_arabic_to_english(Message.objects.get(id=user_msg_id))
 
-    system = SYSTEM_PROMPT
-    history = get_chat_history(room)
-    sample = retrieve_similar(msg,1)
-
+    system_prompt = {"role": "system", "content": SYSTEM_PROMPT}    
+    history = get_chat_history(room)            
+    pt, dr, _ = retrieve_similar(msg.body, 1)[0]
+    sample_note = {
+        "role": "assistant",
+        "content": (
+            "Similar real conversation:\n\n"
+            f"Patient: {pt}\nDoctor: {dr}"
+        ),
+    }    
     messages = [
-        f"""system: {system}
-    history: {history}
-    sample: {sample}"""
+        system_prompt,
+        *history,                           
+        sample_note,
+        {"role": "user", "content": msg.body},
     ]
 
     print(messages)
-    reply = client.chat.completions.create(      # new call
+    reply = client.chat.completions.create(      
         model="gpt-4o-mini",
         messages=messages,
         temperature=0.7

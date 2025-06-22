@@ -28,9 +28,10 @@ class UpdateStatusOrActiveUpdateView(generics.UpdateAPIView):
         allowed_fields = {'status','is_active'}
         requested_fields = set(request.data.keys())
         disallowed = requested_fields - allowed_fields
+        
         if disallowed:
             raise ValidationError(f"You can only update: {allowed_fields}. Not allowed: {disallowed}")
-        
+        print(request.data)
         return super().patch(request,*args,**kwargs)
     
 class GetAllRequestsListView(generics.ListAPIView):
@@ -39,11 +40,16 @@ class GetAllRequestsListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated,IsOwner]
 
     def get_queryset(self):
-        return DoctorAccessRequest.objects.all()
-    def get_object(self):
         patient_id = self.kwargs['patient_id']
-        return get_object_or_404(DoctorAccessRequest,patient_id='patient_id')
-    
+        return DoctorAccessRequest.objects.filter(patient_id = patient_id)
+    def get_object(self):
+        return super().get_object()
+
+class DoctorAccessRequestDestroyView(generics.DestroyAPIView):
+    queryset = DoctorAccessRequest.objects.all()
+    http_method_names = ['delete']
+    permission_classes = [permissions.IsAuthenticated,IsOwner]
+    serializer_class = DoctorAccessRequstSerlizer
 
 class AssignHealthModeratorCreateView(generics.CreateAPIView):
     serializer_class = AssignedHealthCareCenterModeratorsSerlizer
@@ -78,7 +84,6 @@ class AssignedHealthModeratorListView(generics.ListAPIView):
         return AssignedHealthCareCenterModerators.objects.all()
     def get_object(self):
         return super().get_object()
-
 
 class AssignClinicModeratorCreateView(generics.CreateAPIView):
     serializer_class = AssignClinicModeratorSerializer
