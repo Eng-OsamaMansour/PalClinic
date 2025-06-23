@@ -1,9 +1,7 @@
-import {
-  HealthCentersList,
-} from "../../Components/admin/dummy";
 import CreateHealthCenter from "../../Components/admin/CreateHealthCenter";
 import CreateHCModerator from "../../Components/admin/CreateHCModerator";
 import ModeratorManagement from "../../Components/admin/ModeratorManagement";
+import HealthCentersMgmt from "../../Components/admin/centerMgmt";
 
 import SideBar from "../../Components/general/sideBar";
 import { Theme } from "../../assets/Theme/Theme1";
@@ -17,7 +15,7 @@ export default function HealthCenterAdminPage() {
     createCenter: CreateHealthCenter,
     createMod: CreateHCModerator,
     manageMods: ModeratorManagement,
-    listCenters: HealthCentersList,
+    manageCenters: HealthCentersMgmt,
   }[active];
 
   return (

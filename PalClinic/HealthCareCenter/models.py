@@ -14,6 +14,7 @@ class HealthCareCenter(models.Model):
     phoneNumber = models.TextField(max_length=15, default="UNDEFINED")
     email = models.EmailField(max_length=100,default="UNDEFINED@UNDEFINED")
     discrption = models.TextField(max_length=500,default="UNDEFINED")
+    is_active = models.BooleanField(max_length=7,default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     

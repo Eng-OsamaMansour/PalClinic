@@ -24,7 +24,7 @@ class HealthCareCenterUpdateView(generics.UpdateAPIView):
     http_method_names = ['patch']
     permission_classes = [permissions.IsAuthenticated,IsHealthAllawoedModeratorOrAdmin]
     def patch(self, request, *args, **kwargs):
-        allowed_fields = {'centerType','address','location','phoneNumber','email','discrption'}
+        allowed_fields = {'centerType','address','location','phoneNumber','email','discrption','is_active'}
         requested_fields = set(request.data.keys())
         disallowed = requested_fields - allowed_fields
         if disallowed:
@@ -37,7 +37,7 @@ class HealthCareCenterListView(generics.ListAPIView):
     http_method_names = ['get']
     permission_classes = [permissions.AllowAny]
     def get_queryset(self):
-        return HealthCareCenter.objects.all()
+        return HealthCareCenter.objects.filter(is_active=True)
     def get_object(self):
         return super().get_object()
     

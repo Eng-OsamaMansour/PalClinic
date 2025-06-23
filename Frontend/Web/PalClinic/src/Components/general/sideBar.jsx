@@ -5,7 +5,7 @@ export default function SideBar({ active, onChange }) {
     { id: "createCenter", label: "إنشاء مركز صحي" },
     { id: "createMod", label: "إنشاء مشرف" },
     { id: "manageMods",   label: "إدارة المشرفين" }, 
-    { id: "listCenters", label: "قائمة المراكز الصحية" },
+    { id: "manageCenters", label: "ادارة المراكز الصحية" },
   ];
 
   return (
