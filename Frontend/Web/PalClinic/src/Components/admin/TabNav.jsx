@@ -1,11 +1,3 @@
-/* -------------------------------------------------
- *  TabNav.jsx  –  Five-item bottom tab bar
- *  -------------------------------------------------
- *  • React-Router-DOM v6
- *  • react-icons/mdi (Material Design glyphs)
- *  • RTL-friendly, uses your Theme
- * -------------------------------------------------*/
-
 import React from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -20,8 +12,8 @@ import { Theme } from "../../assets/Theme/Theme1";
 
 export default function TabNav() {
   const tabs = [
-    { to: "/admin/healthCenters",            Icon: MdHomeFilled,         label: "المراكز الصحية" },
-    { to: "/admin/clinics",     Icon: MdFavorite,           label: "العيادات" },
+    { to: "/admin/healthCenters", Icon: MdHomeFilled, label: "المراكز الصحية" },
+    { to: "/admin/clinics", Icon: MdFavorite, label: "العيادات" },
     { to: "/admin/statistics", Icon: MdNotificationsNone, label: "الاحصاءات" },
   ];
 

@@ -1,17 +1,9 @@
-/* -------------------------------------------------
- *  TopNav.jsx  –  PalClinic minimalist top bar
- * ------------------------------------------------ */
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { MdLogout, MdOutlineChatBubbleOutline } from "react-icons/md";
 import { Theme } from "../../assets/Theme/Theme1";
 
-/* Optional props:
-   – title     : string  (defaults to "PalClinic")
-   – onChat    : () => void      (fallback = navigate("/chat"))
-   – onBack    : () => void      (fallback = navigate(-1))
-----------------------------------------------------------------*/
 export default function TopNav({ title = "PalClinic", onChat, onBack }) {
   const navigate = useNavigate();
 
@@ -81,10 +73,6 @@ export default function TopNav({ title = "PalClinic", onChat, onBack }) {
         {title}
       </div>
 
-      {/* → Right icon */}
-      <div style={S.side} onClick={handleChat} title="المحادثات">
-        <MdOutlineChatBubbleOutline />
-      </div>
     </header>
   );
 }

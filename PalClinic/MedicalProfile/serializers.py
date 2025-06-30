@@ -1,5 +1,5 @@
 
-from datetime import timezone
+from django.utils import timezone
 from rest_framework import serializers
 from Users.models import User
 from Users.serializer import UserShortInfoSerlizer
@@ -73,16 +73,27 @@ class LabTestSerializer(serializers.ModelSerializer):
 
 class TreatmentSerializer(serializers.ModelSerializer):
     doctor = UserShortInfoSerlizer(read_only=True)
+
     class Meta:
         model = Treatment
-        fields = ['medical_profile', 'doctor', 'treatment', 'dosage', 'description', 'start_date', 'end_date', 'created_at','active']
+        fields = [
+            'medical_profile', 'doctor', 'treatment', 'dosage', 'description',
+            'start_date', 'end_date', 'created_at', 'active'
+        ]
         read_only_fields = ['created_at', 'active']
 
     def validate(self, data):
-        if data['end_date'] and data['end_date'] < data['start_date']:
-            raise serializers.ValidationError("End date cannot be before start date.")
-        if data['end_date'] < timezone.now().date():
-            raise serializers.ValidationError("End date cannot be in the past.")
+        start_date = data.get('start_date')
+        end_date   = data.get('end_date')
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError(
+                "End date cannot be before start date."
+            )
+        if end_date and end_date < timezone.localdate():
+            raise serializers.ValidationError(
+                "End date cannot be in the past."
+            )
+
         return data
     
 class DoctorNoteSerializer(serializers.ModelSerializer):
@@ -91,12 +102,7 @@ class DoctorNoteSerializer(serializers.ModelSerializer):
         model = DoctorNote
         fields = ['medical_profile', 'doctor', 'title', 'note', 'created_at']
         read_only_fields = ['created_at']
-    def validate(self, data):
-        if data['end_date'] and data['end_date'] < data['start_date']:
-            raise serializers.ValidationError("End date cannot be before start date.")
-        if data['end_date'] < timezone.now().date():
-            raise serializers.ValidationError("End date cannot be in the past.")
-        return data
+
 
 
 

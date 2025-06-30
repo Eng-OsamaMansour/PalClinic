@@ -14,18 +14,14 @@ import TreatmentCard from "../../components/MedicalProfile/TreatmentCard";
 import { Theme } from "../../assets/Theme/Theme1";
 
 export default function Treatment() {
-  /* ────────────── data from navigation ────────────── */
   const { params } = useRoute();
   const raw = params?.data ?? [];
 
-  /* Ensure active items are first for the "all" view */
   const sorted = useMemo(
     () => [...raw].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0)),
     [raw]
   );
-
-  /* ────────────── filter state ────────────── */
-  const [filter, setFilter] = useState("all"); // 'all' | 'active' | 'inactive'
+  const [filter, setFilter] = useState("all"); 
 
   const displayed = useMemo(() => {
     if (filter === "active") return sorted.filter((t) => t.active);

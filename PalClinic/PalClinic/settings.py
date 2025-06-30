@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-5dyq&d(gh0e&k!4rq5az_sb@fmuv2)r7+p9%jpldf5+4&7mc8_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+
 
 
 # Application definition
@@ -103,7 +103,7 @@ else:                          # production server
         if origin
     ]
 CORS_ALLOW_CREDENTIALS = True   # if you send cookies or Authorization header
-
+CORS_ALLOW_ALL_ORIGINS = True
 # Keep CSRF in sync
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
@@ -133,7 +133,7 @@ WSGI_APPLICATION = 'PalClinic.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',  # ✅ not just 'django.db.backends.postgresql'
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',  
         'NAME': 'palclinic_db',
         'USER': 'palclinic_user',
         'PASSWORD': 'palclinic_pass',

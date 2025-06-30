@@ -28,7 +28,7 @@ class AssignClinicModerators(models.Model):
 
 class AssignClinicToHealthCenter(models.Model):
     health = models.ForeignKey(HealthCareCenter,on_delete=models.CASCADE)
-    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE)
+    clinic = models.ForeignKey(Clinic,on_delete=models.CASCADE, limit_choices_to={'clinictype': 'healthcarecenter'} )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

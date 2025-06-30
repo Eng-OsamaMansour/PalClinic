@@ -1,4 +1,3 @@
-// screens/AppointmentsView.js
 import React, { useCallback, useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -11,9 +10,10 @@ import {
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { useRoute, useFocusEffect } from "@react-navigation/native";
 import TopTabNavigator from "../../components/Structure/TopSecNav";
-import { getClinicAppointments } from "../../api/appointmnets";
+import { getClinicAppointments, BookAppointment } from "../../api/appointmnets";
 import AppointmentBookingCard from "../../components/Appointments/AppointmentBookingCard";
 import { Theme } from "../../assets/Theme/Theme1";
+import { showMessage } from "react-native-flash-message";
 
 export default function AppointmentsView() {
   const { params } = useRoute();
@@ -22,7 +22,6 @@ export default function AppointmentsView() {
 
   const [rawAppts, setRawAppts] = useState([]);
   const [query, setQuery] = useState("");
-
 
   /* ─── Fetch once on focus ─── */
   useFocusEffect(
@@ -86,9 +85,25 @@ export default function AppointmentsView() {
         renderItem={({ item }) => (
           <AppointmentBookingCard
             appointment={item}
-            onBook={(appt) => {
-              /* TODO: open booking flow */
-              console.log("Book pressed:", appt.id);
+            onBook={async (appt) => {
+              const response = await BookAppointment(appt.id);
+              if (response.ok) {
+                showMessage({
+                  message: "نجاح",
+                  description: "تم حجز الموعد",
+                  type: "success",
+                  backgroundColor: "#45D645",
+                  color: "white",
+                });
+              } else {
+                showMessage({
+                  message: "تنبيه",
+                  description: "حدث خطا لم يتم الحجز",
+                  type: "danger",
+                  backgroundColor: "#D64545",
+                  color: "white",
+                });
+              }
             }}
           />
         )}

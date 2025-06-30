@@ -1,7 +1,7 @@
 // theme.ts
 
 export const Theme = {
-  // 🎨 Color Palette
+  // Color Palette
 
   // Primary branding color (used for buttons, headers, icons)
   primary: '#007BFF', // Medical blue
@@ -37,7 +37,7 @@ export const Theme = {
   // Optional highlights
   highlight: '#D0F0E9', // Background for selected or hovered items
 
-  // 🔤 Font Sizes
+  // Font Sizes
   fontSize: {
     title: 20,       // Page titles
     heading: 18,     // Section headers
@@ -46,7 +46,7 @@ export const Theme = {
     tiny: 12,        // Very small notes
   },
 
-  // 📐 Spacing (used for margin/padding)
+  // Spacing (used for margin/padding)
   spacing: {
     tiny: 4,
     small: 8,
@@ -55,14 +55,14 @@ export const Theme = {
     xLarge: 32,
   },
 
-  // 🔲 Border radius for consistent rounded corners
+  // Border radius for consistent rounded corners
   borderRadius: {
     small: 6,
     medium: 12,
     large: 20,
   },
 
-  // 🆎 Font weights
+  // Font weights
   fontWeight: {
     light: '300',
     normal: '400',

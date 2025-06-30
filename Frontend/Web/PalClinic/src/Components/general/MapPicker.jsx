@@ -7,7 +7,6 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 
-/* ——— Fix leaflet icon urls ——— */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -31,37 +30,33 @@ function ClickHandler({ onPick }) {
 export default function MapPicker({ lat, lon, onPick }) {
   const mapRef = useRef(null);
 
-  /* ①  Invalidate size when map mounts */
   const handleReady = (map) => {
     mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 0); // next tick
+    setTimeout(() => map.invalidateSize(), 0);
   };
 
-  /* ②  …and every time window resizes or page scrolls */
   useEffect(() => {
     const invalidate = () => mapRef.current?.invalidateSize();
     window.addEventListener("resize", invalidate);
-    window.addEventListener("scroll", invalidate, true); // true = capture inside scrollable parents
+    window.addEventListener("scroll", invalidate, true); 
     return () => {
       window.removeEventListener("resize", invalidate);
       window.removeEventListener("scroll", invalidate, true);
     };
   }, []);
 
-  /* ③  Recentre when form state changes */
   useEffect(() => {
     if (lat && lon && mapRef.current) {
       mapRef.current.setView([lat, lon]);
     }
   }, [lat, lon]);
 
-  /* —— wrapper —— */
   const wrapper = {
     width: "100%",
     height: 320,
     borderRadius: 8,
     overflow: "hidden",
-    background: "#E6F0FA",       // Theme.primaryLight – hides gaps while tiles load
+    background: "#E6F0FA",       
   };
 
   return (

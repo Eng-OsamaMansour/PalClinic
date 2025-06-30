@@ -3,8 +3,6 @@ import { getValidAccessToken } from "../config/ValidAccessToken";
 
 const getAppointments = async () => {
   const token = await getValidAccessToken();
-
-  console.log(token);
   if (!token) throw new Error("Unauthorized");
 
   const response = await fetch(`${BASE_URL}/appointment/list`, {
@@ -40,8 +38,6 @@ const cancelAppointment = async (appointmentId) => {
   return response.json();
 };
 
-
-
 const getClinicAppointments = async (clinic_id) => {
   const token = await getValidAccessToken();
 
@@ -58,4 +54,18 @@ const getClinicAppointments = async (clinic_id) => {
   }
   return response.json();
 };
-export { getAppointments, cancelAppointment,getClinicAppointments };
+
+const BookAppointment = async (appointmentId) => {
+  const token = await getValidAccessToken();
+
+  if (!token) throw new Error("Unauthorized");
+  const response = await fetch(`${BASE_URL}/appointment/book/${appointmentId}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response
+};
+export { getAppointments, cancelAppointment, getClinicAppointments,BookAppointment };

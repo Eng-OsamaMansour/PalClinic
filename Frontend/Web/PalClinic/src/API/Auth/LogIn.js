@@ -9,7 +9,7 @@ const login = async (email, password) => {
     },
     body: JSON.stringify({ email, password }),
   });
-  console.log(response.ok)
+  console.log(response.ok);
   return response;
 };
 
@@ -18,11 +18,22 @@ const getUserApi = async () => {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${ getAccessToken()}`,
+      Authorization: `Bearer ${getAccessToken()}`,
     },
   });
   return response;
 };
 
+const getClinicApi = async () => {
+  const response = await fetch(`${BASE_URL}/clinic/mod/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+  });
+  return response
+};
+
 export default login;
-export { getUserApi };
+export { getUserApi,getClinicApi };

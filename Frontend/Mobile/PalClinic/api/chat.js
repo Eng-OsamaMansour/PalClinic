@@ -6,7 +6,7 @@ const authHeaders = async () => ({
   Authorization: `Bearer ${await getValidAccessToken()}`,
 });
 
-// rooms
+
 export const listRooms = async () =>
   fetch(`${BASE_URL}/chat/rooms/`, { headers: await authHeaders() }).then((r) =>
     r.json()
@@ -19,7 +19,7 @@ export const createRoom = async (name) =>
     body: JSON.stringify({ name }),
   }).then((r) => r.json());
 
-// messages (REST fallback / pagination)
+
 export const listMessages = async (roomId, page = 1) =>
   fetch(`${BASE_URL}/chat/rooms/${roomId}/messages/?page=${page}`, {
     headers: await authHeaders(),

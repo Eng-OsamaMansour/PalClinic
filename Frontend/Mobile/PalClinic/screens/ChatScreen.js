@@ -1,9 +1,9 @@
 import React, {
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
-  useCallback,
 } from "react";
 import {
   View,
@@ -14,20 +14,21 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";   
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import uuid from "react-native-uuid";
 import dayjs from "dayjs";
+
 import { ChatCtx } from "../contexts/ChatContext";
-import {
-  listMessages,
-  sendMessageREST,
-} from "../api/chat";
+import { listMessages, sendMessageREST } from "../api/chat";
 import MessageBubble from "../components/Chat/MessageBubble";
 import { getValidAccessToken } from "../config/ValidAccessToken";
 import { Theme } from "../assets/Theme/Theme1";
 
 export default function ChatScreen({ route }) {
+  const insets = useSafeAreaInsets();                 
   const { room } = route.params;
+
   const {
     messages,
     openSocket,
@@ -65,7 +66,6 @@ export default function ChatScreen({ route }) {
   const fetchNext = useCallback(async () => {
     const next = page + 1;
     const data = await listMessages(room.id, next);
-
     const batch = Array.isArray(data)
       ? data.reverse()
       : (data.results || []).reverse();
@@ -83,7 +83,7 @@ export default function ChatScreen({ route }) {
     setInput("");
 
     const optimistic = {
-     id: `temp-${uuid.v4()}`, // negative temp id
+      id: `temp-${uuid.v4()}`,
       author: userId,
       body,
       created_at: new Date().toISOString(),
@@ -98,8 +98,7 @@ export default function ChatScreen({ route }) {
   const renderItem = ({ item, index }) => {
     const prev = roomMsgs[index + 1];
     const showDate =
-      !prev ||
-      !dayjs(prev.created_at).isSame(item.created_at, "day");
+      !prev || !dayjs(prev.created_at).isSame(item.created_at, "day");
 
     return (
       <MessageBubble
@@ -113,43 +112,52 @@ export default function ChatScreen({ route }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90}
+      behavior={Platform.select({ ios: "padding", android: "height" })}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 60}
     >
-      <FlatList
-        data={roomMsgs}
-        keyExtractor={(m) => String(m.id)}
-        renderItem={renderItem}
-        inverted
-        onEndReached={fetchNext}
-        onEndReachedThreshold={0.1}
-        contentContainerStyle={styles.list}
-      />
-
-      {/* composer */}
-      <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          value={input}
-          onChangeText={setInput}
-          placeholder="اكتب رسالتك…"
-          placeholderTextColor={Theme.textSecondary}
-          multiline
+      {/* whole screen inside the avoiding view */}
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={roomMsgs}
+          keyExtractor={(m) => String(m.id)}
+          renderItem={renderItem}
+          inverted
+          onEndReached={fetchNext}
+          onEndReachedThreshold={0.1}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
         />
-        <TouchableOpacity
+
+        {/* composer */}
+        <View
           style={[
-            styles.sendBtn,
-            { opacity: input.trim() ? 1 : 0.3 },
+            styles.composer,
+            { paddingBottom: insets.bottom || 8 },      // ← NEW
           ]}
-          disabled={!input.trim()}
-          onPress={handleSend}
         >
-          <MaterialCommunityIcons
-            name="send"
-            size={22}
-            color={Theme.textInverse}
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="اكتب رسالتك…"
+            placeholderTextColor={Theme.textSecondary}
+            multiline
           />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.sendBtn,
+              { opacity: input.trim() ? 1 : 0.3 },
+            ]}
+            disabled={!input.trim()}
+            onPress={handleSend}
+          >
+            <MaterialCommunityIcons
+              name="send"
+              size={22}
+              color={Theme.textInverse}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -160,7 +168,8 @@ const styles = StyleSheet.create({
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    padding: Theme.spacing.small,
+    paddingHorizontal: Theme.spacing.small,
+    paddingTop: Theme.spacing.small,
     borderTopWidth: 0.5,
     borderColor: Theme.border,
     backgroundColor: Theme.background,

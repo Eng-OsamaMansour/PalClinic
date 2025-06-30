@@ -22,7 +22,7 @@ class Notifications(models.Model):
     
 class DeviceToken(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="device_tokens",on_delete=models.CASCADE)
-    token       = models.CharField(max_length=255, unique=True)
+    token       = models.CharField(max_length=255)
     platform    = models.CharField(max_length=10, choices=[("ios","iOS"),("android","Android")])
     created_at  = models.DateTimeField(auto_now_add=True)
 

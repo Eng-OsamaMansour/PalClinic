@@ -1,14 +1,11 @@
-/* -------------------------------------------------
- *  LoginPage.jsx  –  Web login page w/ react-toastify
- *  -------------------------------------------------*/
-
 import React, { use, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import login, { getUserApi } from "../../API/Auth/LogIn";
+import login, { getUserApi,getClinicApi } from "../../API/Auth/LogIn";
 import { clearTokens, setTokens } from "../../Config/TokenManager";
 import { clearUser, getUser, setUser } from "../../Config/UserManager";
+import { setClinic,getClinic,clearClinic } from "../../Config/ClinicManager";
 import { Theme } from "../../assets/Theme/Theme1";
 
 export default function LoginPage() {
@@ -33,12 +30,21 @@ export default function LoginPage() {
           setUser(user);
           if (user.role === "admin") {
             setTimeout(() => window.location.replace("/admin/healthCenters"), 800);
-          } else if (user.role === "clinic_moderator") {
-            setTimeout(() => window.location.replace("/clinicModerator"), 800);
+          } else if (user.role === "clinic_moderator") {          
+            const clinicData = await getClinicApi()
+            const clinic = await clinicData.json()
+            if (clinicData.ok){
+              setClinic(clinic)              
+            }
+
+            setTimeout(() => window.location.replace("/clinicModerator/home"), 800);
           }
           if (user.role === "healthcarecenter_moderator") {
             setTimeout(() => window.location.replace("/healthModerator"), 800);
-          } else if (user.role === "patient") {
+          }else if(user.role === "doctor"){
+            setTimeout(() => window.location.replace("/doctor/home"), 800);
+          } 
+          else if (user.role === "patient") {
             toast.info(
               "الموقع لا يدعم حسابالت المرضى يرجى تسجيل الدخول من التطبيق"
             );
@@ -79,7 +85,6 @@ export default function LoginPage() {
       margin: "0 auto",
       marginBottom: Theme.spacing.large,
       borderRadius: 24,
-      padding: 8,
       backgroundImage:
         "repeating-linear-gradient(45deg, #707070 0 4px, transparent 4px 8px)",
     },

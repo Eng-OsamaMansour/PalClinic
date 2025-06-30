@@ -27,13 +27,13 @@ export default function ChatListScreen({ navigation }) {
     >
       <View style={styles.avatar}>
         <Text style={styles.avatarTxt}>
-          {item.name.startsWith("assist-") ? "🤖" : item.name[0]}
+          {item.name.startsWith("assist-") ? "🤖" : item.title[0]}
         </Text>
       </View>
 
       <View style={styles.meta}>
         <Text style={styles.title}>
-          {item.name.startsWith("assist-") ? "المساعد الطبي" : item.name}
+          {item.name.startsWith("assist-") ? "المساعد الطبي" : item.title}
         </Text>
         {item.last_message && (
           <Text style={styles.preview} numberOfLines={1}>

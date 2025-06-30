@@ -1,9 +1,9 @@
-import CreateHealthCenter from "../../Components/admin/CreateHealthCenter";
-import CreateHCModerator from "../../Components/admin/CreateHCModerator";
-import ModeratorManagement from "../../Components/admin/ModeratorManagement";
-import HealthCentersMgmt from "../../Components/admin/centerMgmt";
+import CreateHealthCenter from "../../Components/admin/HealthCareCenters/CreateHealthCenter";
+import CreateHCModerator from "../../Components/admin/HealthCareCenters/CreateHCModerator";
+import ModeratorManagement from "../../Components/admin/HealthCareCenters/ModeratorManagement";
+import HealthCentersMgmt from "../../Components/admin/HealthCareCenters/centerMgmt";
 
-import SideBar from "../../Components/general/sideBar";
+import SideBar from "../../Components/admin/HealthCareCenters/sideBar";
 import { Theme } from "../../assets/Theme/Theme1";
 import { useState } from "react";
 import TopNav from "../../Components/admin/TopNav";
@@ -20,14 +20,14 @@ export default function HealthCenterAdminPage() {
 
   return (
     <>
-    <TopNav />
-    <TabNav />
-    <div style={S.page}>
-      <main style={S.content}>
-        <View />
-      </main>
-      <SideBar active={active} onChange={setActive} />
-    </div>
+      <TopNav />
+      <TabNav />
+      <div style={S.page}>
+        <main style={S.content}>
+          <View />
+        </main>
+        <SideBar active={active} onChange={setActive} />
+      </div>
     </>
   );
 }

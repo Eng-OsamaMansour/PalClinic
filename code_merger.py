@@ -1,7 +1,7 @@
 import os
 
 # Define your project root directory
-project_root = './PalCLinic'  # <-- Change this to your Django project root
+project_root = '.'  # <-- Change this to your Django project root
 output_file = 'merged_project.txt'
 script_name = os.path.basename(__file__)  # Name of this script
 

@@ -3,14 +3,14 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 class NotificationConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         user = self.scope["user"]
-        if user.is_anonymous:                          # ↙ early-exit leaves no .group
+        if user.is_anonymous:                         
             await self.close()
             return
 
         self.group = f"user_{user.id}"
         await self.channel_layer.group_add(self.group, self.channel_name)
 
-        await self.accept()                            # <- () were missing
+        await self.accept()                         
 
     async def disconnect(self, code):
         # If connect() bailed out we don't have self.group yet

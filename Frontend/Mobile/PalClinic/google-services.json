@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "584330983412",
+    "project_id": "palclinic-b9841",
+    "storage_bucket": "palclinic-b9841.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584330983412:android:570c6b38a2302083066ba1",
+        "android_client_info": {
+          "package_name": "com.engosama.palclinic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuJH3fOK7yZHqth62POY7F4myVSTbwSpY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

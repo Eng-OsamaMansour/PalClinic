@@ -1,4 +1,3 @@
-// tokenUtils.ts / .js (ESM)
 import { jwtDecode } from "jwt-decode";
 import {
   getAccessToken,
@@ -8,11 +7,11 @@ import {
 
 export async function getValidAccessToken() {
   let token = await getAccessToken();
-  if (!token) return refreshAccessToken(); // nothing yet
+  if (!token) return refreshAccessToken(); 
 
   try {
-    const { exp } = jwtDecode(token); // ← works
-    const now = (Date.now() / 1000) | 0; // int seconds
+    const { exp } = jwtDecode(token);
+    const now = (Date.now() / 1000) | 0; 
 
     if (exp < now + 60) token = await refreshAccessToken();
     return token;

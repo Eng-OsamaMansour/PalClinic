@@ -5,9 +5,6 @@ User = get_user_model()
 BOT_ID = User.objects.get(email="assistant@palclinic.ai").id
 
 def get_or_create_private_room(user, raw_name: str) -> Room:
-    """
-    raw_name will be something like assist-1334-20250618T1801
-    """
     if not raw_name.startswith(f"assist-{user.id}"):
         raise ValueError("Patient can only join their own assistant rooms")
 
@@ -18,7 +15,6 @@ def get_or_create_private_room(user, raw_name: str) -> Room:
 
 
 def get_chat_history(room: Room, limit=20):
-    """Return last `limit` msgs in OpenAI chat format."""
     msgs = (
         Message.objects
         .filter(room=room)

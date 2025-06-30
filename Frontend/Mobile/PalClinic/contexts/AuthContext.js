@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [access, setAccess]   = useState(null);
 
-  /* bootstrap: check SecureStore once */
   useEffect(() => {
     (async () => {
       setAccess(await getAccessToken());
@@ -18,7 +17,7 @@ export function AuthProvider({ children }) {
   const loginCtx  = (token) => setAccess(token);   
   const logoutCtx = async () => { await clearTokens(); setAccess(null); };
 
-  if (loading) return null;            // << a splash screen is nicer
+  if (loading) return null;         
 
   return (
     <AuthCtx.Provider value={{ access, loginCtx, logoutCtx }}>

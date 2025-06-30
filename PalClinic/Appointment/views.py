@@ -1,6 +1,6 @@
 from rest_framework import generics,permissions
 from django.db import transaction,models
-from AccessControl.permissions import IsTheClinicModerator,IsClinicModerator,IsTheAppointmentModerator,IsPatient
+from AccessControl.permissions import IsClinicAllowedModeratorOrAdmin, IsTheClinicModerator,IsClinicModerator,IsTheAppointmentModerator,IsPatient
 from .serializers import *
 from Users.models import User
 from Clinic.models import Clinic
@@ -9,7 +9,7 @@ from .models import Appointment
 class AppointmentCreateView(generics.CreateAPIView):
     serializer_class = AppointmentSerializer
     http_method_names = ['post']
-    permission_classes = [permissions.IsAuthenticated,IsTheClinicModerator]
+    permission_classes = [permissions.IsAuthenticated]
     def perform_create(self, serializer):
         doctor = User.objects.get(id = self.request.data.get('doctor'))
         clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
@@ -33,7 +33,7 @@ class AppointmentUpdateView(generics.UpdateAPIView):
     def get_queryset(self):        
         return Appointment.objects.filter(id=self.kwargs.get('pk'))
     def patch(self, request, *args, **kwargs):
-        allowed_fields = {'date','time','doctor','available','updated_at'}
+        allowed_fields = {'date','time','doctor','status','updated_at'}
         requested_fields = set(request.data.keys())
         disallowed = requested_fields - allowed_fields
         if disallowed:
@@ -67,20 +67,23 @@ class AppointmentBookCreateView(generics.CreateAPIView):
 class AppointmentBookListView(generics.ListAPIView):    
     http_method_names = ['get']
     permission_classes = [permissions.IsAuthenticated]
+
     def get_serializer_class(self):
         role = self.request.user.role
         if role == 'doctor':
-            return AppointmentSerializer
+            return AppointmentBookedListSerializer  # return booked list with patient info
         if role == 'patient':
-            return AppointmentBookedListSerializer
+            return AppointmentBookedListSerializer  # same serializer, logic inside handles both roles
+
+    def get_serializer_context(self):
+        return {'request': self.request}
+
     def get_queryset(self):
-        if self.request.user.role == 'patient':
-            return AppointmentBooking.objects.filter(patient = self.request.user)
-        if self.request.user.role == 'doctor':
-            return Appointment.objects.filter(doctor = self.request.user, available = False)
-        
-    def get_object(self):
-        return super().get_object()
+        user = self.request.user
+        if user.role == 'patient':
+            return AppointmentBooking.objects.filter(patient=user)
+        if user.role == 'doctor':
+            return AppointmentBooking.objects.filter(appointment__doctor=user)
     
 class AppointmentUnBookView(generics.DestroyAPIView):
     serializer_class   = AppointmentBookingSerializer

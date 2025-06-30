@@ -92,7 +92,7 @@ class IsHealthAllawoedModeratorOrAdmin(BasePermission):
         return False
  
 def is_assigned_clinic_moderator(clinic,moderator):
-    return AssignClinicModerators.objects.filter(moderator=moderator,clinic=clinic,is_active=True).exists()
+    return AssignClinicModerators.objects.filter(moderator=moderator.id,clinic=clinic.id,is_active=True).exists()
 class IsClinicAllowedModeratorOrAdmin(BasePermission):
     def has_permission(self, request, view):
         user = request.user
@@ -113,8 +113,9 @@ class IsClinicAllowedModeratorOrAdmin(BasePermission):
 class IsTheClinicModerator(BasePermission):
     def has_permission(self, request, view):
         clinic_id = request.data.get('clinic')
+        clinic = Clinic.objects.filter(id = clinic_id)
         user = request.user
-        return is_assigned_clinic_moderator(clinic=clinic_id, moderator=user)
+        return is_assigned_clinic_moderator(clinic=clinic, moderator=user)
     
 class IsTheAppointmentModerator(BasePermission):
     def has_permission(self, request, view):

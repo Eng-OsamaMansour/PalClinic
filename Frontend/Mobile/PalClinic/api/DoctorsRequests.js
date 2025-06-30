@@ -2,11 +2,11 @@ import { BASE_URL } from "../config/Config";
 import { getUser } from "../config/UserManager";
 import { getValidAccessToken } from "../config/ValidAccessToken";
 
-//access_requst/get/<int:patient_id>
+
 export const getDoctorsRequsets = async () => {
   const { id } = await getUser();
   const response = await fetch(
-    `${BASE_URL}/AccessControl/access_requst/get/${id}`,
+    `${BASE_URL}/AccessControl/access_requst/get/`,
     {
       method: "GET",
       headers: {
@@ -23,7 +23,6 @@ export const getDoctorsRequsets = async () => {
   return response.json();
 };
 
-//access_request/update/<int:pk>
 export const updateRequest = async (request) => {
   const payload = request.is_active
     ? { status: "rejected", is_active: false }
@@ -48,7 +47,6 @@ export const updateRequest = async (request) => {
   return response;
 };
 
-//access_request/delete/<int:pk>
 export const deleteRequest = async (request) => {
 
   const response = await fetch(

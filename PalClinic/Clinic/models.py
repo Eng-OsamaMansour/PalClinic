@@ -13,6 +13,7 @@ class Clinic(models.Model):
     location = geomodels.PointField(srid=4326, geography=True, null=True, blank=True)
     specialties	= models.TextField(max_length=100,default="UNDEFINED")
     operating_hours = models.JSONField(default=dict,help_text="Structured hours, e.g. {'mon': '9-5', 'tue': '10-4'}",blank=True,null=True)
+    is_active = models.BooleanField(max_length=7,default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 

@@ -45,8 +45,7 @@ def _age_bin(age: int) -> str:
 
 
 def scrub(text: str) -> str:
-    """Remove PII & boiler‑plate but keep clinical meaning."""
-    txt = str(text).replace("<start>", "")  # system token
+    txt = str(text).replace("<start>", "")  
     txt = EMAIL_RGX.sub("[EMAIL]", txt)
     txt = PHONE_RGX.sub("[PHONE]", txt)
     txt = NAME_FILL.sub("[NAME]", txt)
@@ -59,9 +58,9 @@ def scrub(text: str) -> str:
 
 def filter_chat_csv():
     min_q = 10
-    max_q = 200
+    max_q = 400
     min_a = 20
-    max_a = 250
+    max_a = 500
     export_format = "csv"
     patient_col = "Patient"
     doctor_col = "Doctor"
@@ -105,7 +104,7 @@ def filter_chat_csv():
     clean_df = pd.DataFrame(rows)
     out_path = Path(out_path)
     clean_df.to_csv(out_path, index=False)
-    print(f"✅ Saved {len(clean_df)} cleaned Q‑A pairs → {out_path}")
+    print(f"Saved {len(clean_df)} cleaned Q‑A pairs → {out_path}")
 
 
 if __name__ == "__main__":

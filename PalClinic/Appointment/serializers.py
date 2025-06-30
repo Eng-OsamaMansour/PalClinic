@@ -5,6 +5,7 @@ from rest_framework import serializers
 from .models import Appointment,AppointmentBooking
 from Clinic.models import Clinic
 from Users.models import User
+from Users.serializer import UserShortInfoSerlizer
 from AccessControl.models import AssignDoctorToClinic
 
 
@@ -29,13 +30,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
         request  = self.context['request']
         instance = getattr(self, 'instance', None)
         method   = request.method
-    
-        # 1. Required fields on POST
         if method == 'POST':
             if 'date' not in attrs or 'time' not in attrs:
                 raise ValidationError("Both 'date' and 'time' are required.")
     
-        # 2. Past‑date / past‑time guard
         current_date = attrs.get('date',  getattr(instance, 'date',  None))
         current_time = attrs.get('time',  getattr(instance, 'time',  None))
     
@@ -46,7 +44,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
             if current_date == now.date() and current_time < now.time():
                 raise ValidationError("The time can't be in the past.")
     
-        # 3. Double‑booking guard
         clinic  = attrs.get('clinic',  getattr(instance, 'clinic',  None))
         doctor  = attrs.get('doctor',  getattr(instance, 'doctor',  None))
     
@@ -60,8 +57,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             )
             if clash:
                 raise ValidationError("Another appointment is already booked for that slot.")
-    
-        # 4. Check doctor‑clinic assignment
+
         if clinic and doctor and not AssignDoctorToClinic.objects.filter(
                 clinic=clinic, doctor=doctor, is_active=True).exists():
             raise ValidationError("This doctor is not assigned to that clinic.")
@@ -91,10 +87,17 @@ class AppointmentBookingSerializer(serializers.ModelSerializer):
         return attrs
     
 class AppointmentBookedListSerializer(serializers.ModelSerializer):
-    appointment = AppointmentSerializer(read_only =True)
+    appointment = AppointmentSerializer(read_only=True)
+    patient_info = serializers.SerializerMethodField()
+
     class Meta:
         model = AppointmentBooking
-        fields = ['appointment']
+        fields = ['appointment', 'patient_info']
 
+    def get_patient_info(self, obj):
+        request = self.context.get('request')
+        if request and request.user.role == 'doctor':
+            return UserShortInfoSerlizer(obj.patient).data
+        return None
 
 

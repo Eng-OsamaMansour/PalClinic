@@ -13,14 +13,9 @@ import CenterCard from "../../components/HealthCare/CenterCard";
 import { Theme } from "../../assets/Theme/Theme1";
 
 export default function HealthCenterView() {
-  /* ───────── Data from route ───────── */
   const { params } = useRoute();
   const data = params?.data ?? [];
-
-  /* ───────── Search state ───────── */
   const [query, setQuery] = useState("");
-
-  /* ───────── Derived filtered list ───────── */
   const filtered = useMemo(() => {
     if (!query.trim()) return data;
     const q = query.trim().toLowerCase();
@@ -32,12 +27,10 @@ export default function HealthCenterView() {
         center.email,
         center.phoneNumber,
       ]
-        .filter(Boolean) // skip undefined
+        .filter(Boolean) 
         .some((field) => field.toLowerCase().includes(q))
     );
   }, [query, data]);
-
-  /* ───────── UI ───────── */
   return (
     <SafeAreaView style={styles.safe}>
       <TopTabNavigator />

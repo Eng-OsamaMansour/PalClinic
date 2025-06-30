@@ -52,21 +52,51 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 class UserShortInfoSerlizer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id","name","email",'role']
+        fields = ["id","name","email",'role','phoneNumber']
 
 
 
 class HCModeratorCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'name', 'phoneNumber']   # role + pw hidden
-
+        fields = ['email', 'name', 'phoneNumber']   
     def create(self, validated_data):
         pwd = generate_password()
         user = User.objects.create_healthcarecenter_moderator(
             password=pwd,
             **validated_data
         )
-        # you could send an email here
-        user._plain_password = pwd        # stash for the view’s response
+      
+        user._plain_password = pwd       
+        return user
+    
+
+class CModeratorCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'phoneNumber']   
+
+    def create(self, validated_data):
+        pwd = generate_password()
+        user = User.objects.create_clinic_moderator(
+            password=pwd,
+            **validated_data
+        )
+        user._plain_password = pwd        
+        return user
+    
+
+
+class DoctorCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email', 'name', 'phoneNumber']   
+    def create(self, validated_data):
+        pwd = generate_password()
+        user = User.objects.create_doctor(
+            password=pwd,
+            **validated_data
+        )
+      
+        user._plain_password = pwd       
         return user

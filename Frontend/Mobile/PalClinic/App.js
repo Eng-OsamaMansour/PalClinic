@@ -27,7 +27,7 @@ import { AuthProvider, AuthCtx } from "./contexts/AuthContext";
 function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={Login}  initialRouteName="Login" />
+      <Stack.Screen name="Login" component={Login} initialRouteName="Login" />
       <Stack.Screen name="Signup" component={Signup} />
     </Stack.Navigator>
   );
@@ -35,10 +35,9 @@ function AuthStack() {
 
 function AppStack() {
   return (
-    <ChatProvider>
-      <NotificationProvider>
-
-          <Stack.Navigator>
+    <NotificationProvider>
+      <ChatProvider>
+        <Stack.Navigator>
           <Stack.Screen
             name="Main"
             component={Home}
@@ -69,55 +68,54 @@ function AppStack() {
             component={DoctorNote}
             options={{ headerShown: false }}
           />
-            <Stack.Screen
-              name="HealthCareCenterChooser"
-              component={HealthCenterChooser}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="HealthCentersView"
-              component={HealthCentersView}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ClinicsView"
-              component={ClinicsView}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="AppointmentsView"
-              component={AppointmentsView}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ChatList"
-              component={ChatListScreen}
-              options={{ title: "الدردشات" }}
-            />
-            <Stack.Screen
-              name="ChatScreen"
-              component={ChatScreen}
-              options={({ route }) => ({
-                title: route.params?.room?.name.startsWith("assist-")
-                  ? "مساعد الذكاء الصناعي"
-                  : route.params?.room?.name,
-              })}
-            />
+          <Stack.Screen
+            name="HealthCareCenterChooser"
+            component={HealthCenterChooser}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="HealthCentersView"
+            component={HealthCentersView}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ClinicsView"
+            component={ClinicsView}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AppointmentsView"
+            component={AppointmentsView}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ChatList"
+            component={ChatListScreen}
+            options={{ title: "الدردشات" }}
+          />
+          <Stack.Screen
+            name="ChatScreen"
+            component={ChatScreen}
+            options={({ route }) => ({
+              title: route.params?.room?.name.startsWith("assist-")
+                ? "مساعد الذكاء الصناعي"
+                : route.params?.room?.title,
+            })}
+          />
         </Stack.Navigator>
 
         <FlashMessage position="bottom" />
-      </NotificationProvider>
-    </ChatProvider>
+      </ChatProvider>
+    </NotificationProvider>
   );
 }
-
 
 function Root() {
   const { access } = React.useContext(AuthCtx);
   return (
     <NavigationContainer>
       {access ? <AppStack /> : <AuthStack />}
-      </NavigationContainer>
+    </NavigationContainer>
   );
 }
 

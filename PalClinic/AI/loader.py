@@ -35,4 +35,4 @@ def load_embeddings():
         )
     
     
-    print("✅ done – inserted", len(patient), "rows")
+    print("done – inserted", len(patient), "rows")

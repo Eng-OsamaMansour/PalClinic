@@ -43,10 +43,6 @@ class HealthCareCenterListView(generics.ListAPIView):
     
 
 class HealthCareCenterClinicListView(generics.ListAPIView):
-    """
-    GET /health-centers/<health_id>/clinics/
-    Returns all *active* clinics assigned to the given HealthCareCenter.
-    """
     serializer_class = ClinicSerializer
 
     def get_queryset(self):
@@ -57,36 +53,22 @@ class HealthCareCenterClinicListView(generics.ListAPIView):
             Clinic.objects
             .filter(assignclinictohealthcenter__health_id=health_id,
                     assignclinictohealthcenter__is_active=True)
-            .select_related()                    # no joins needed, but keeps pattern symmetrical
-            .prefetch_related("assignclinictohealthcenter_set")  # future-proof
+            .select_related()             
+            .prefetch_related("assignclinictohealthcenter_set") 
         )
     
 
-        # INSERT_YOUR_CODE
 class UnassignedHealthCareCenterListView(generics.ListAPIView):
-    """
-    Returns all HealthCareCenters that do not have an active moderator assigned.
-    """
     serializer_class = HealthCareCenterSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        # Get all health care centers that either:
-        # - do not exist in AssignedHealthCareCenterModerators
-        # - or exist only with is_active=False
         assigned_qs = AssignedHealthCareCenterModerators.objects.filter(is_active=True).values_list('healthcarecenter_id', flat=True)
         return HealthCareCenter.objects.exclude(id__in=assigned_qs)
 
 
-        # INSERT_YOUR_CODE
-
 class AssignedHealthCareCenterModeratorListView(generics.ListAPIView):
-    """
-    Returns a list of all active health center-moderator assignments,
-    with moderator email and health center name and assignment id.
-    """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
     class OutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         moderator_email = serializers.EmailField()

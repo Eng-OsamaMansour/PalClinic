@@ -23,7 +23,7 @@ import {
 } from "../config/TokenManager";
 
 export default function Login() {
-  const {loginCtx} = useContext(AuthCtx)
+  const { loginCtx } = useContext(AuthCtx);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigation = useNavigation();
@@ -38,6 +38,7 @@ export default function Login() {
       });
       return;
     }
+    console.log("login");
     const response = await login(email, password);
     const data = await response.json();
     if (!response.ok) {

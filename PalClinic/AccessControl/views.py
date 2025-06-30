@@ -2,11 +2,11 @@ from django.shortcuts import get_object_or_404, render
 
 from rest_framework import generics,permissions
 from .serializers import *
-from .permissions import IsDoctorUser, IsOwner,IsAdmin
+from .permissions import IsDoctorUser, IsOwner,IsAdmin,IsClinicModerator
 from Users.models import User
 from HealthCareCenter.models import HealthCareCenter
 from Clinic.models import Clinic
-
+from Users.serializer import UserShortInfoSerlizer
 class DoctorAccessRequestCreateView(generics.CreateAPIView):
     serializer_class = DoctorAccessRequstSerlizer
     http_method_names = ['post']
@@ -37,11 +37,13 @@ class UpdateStatusOrActiveUpdateView(generics.UpdateAPIView):
 class GetAllRequestsListView(generics.ListAPIView):
     serializer_class = DoctorAccessRequstSerlizer
     http_method_names = ['get']
-    permission_classes = [permissions.IsAuthenticated,IsOwner]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        patient_id = self.kwargs['patient_id']
-        return DoctorAccessRequest.objects.filter(patient_id = patient_id)
+        if (self.request.user.role == "patient"):
+            return DoctorAccessRequest.objects.filter(patient_id = self.request.user.id)
+        if (self.request.user.role == "doctor"):
+            return DoctorAccessRequest.objects.filter(doctor_id = self.request.user.id)
     def get_object(self):
         return super().get_object()
 
@@ -128,7 +130,6 @@ class AssignClinicToHealthCenterCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
         health = HealthCareCenter.objects.get(id = self.request.data.get('health'))
-        
         serializer.save(clinic = clinic,health=health)
 
 class AssignClinicToHealthCenterUpdateView(generics.UpdateAPIView):
@@ -156,19 +157,28 @@ class AssignClinicToHealthCenterListView(generics.ListAPIView):
         return super().get_object()
     
 class AssignDoctorToClinkCreateView(generics.CreateAPIView):
-    serializer_class = AssignDoctorToClinicSerializer
-    http_method_names = ['post']
-    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    serializer_class   = AssignDoctorToClinicSerializer
+    permission_classes = [permissions.IsAuthenticated, IsClinicModerator]
+
     def perform_create(self, serializer):
-        doctor = User.objects.get(id = self.request.data.get('doctor'))
-        clinic = Clinic.objects.get(id = self.request.data.get('clinic'))
-        serializer.save(doctor = doctor,clinic = clinic)
+        doctor_id = self.request.data["doctor"]
+        clinic_id = self.request.data["clinic"]
+
+        obj, created = AssignDoctorToClinic.objects.get_or_create(
+            doctor_id=doctor_id,
+            clinic_id=clinic_id,
+            defaults={"is_active": True},
+        )
+        if not created and not obj.is_active:
+            obj.is_active = True
+            obj.save(update_fields=["is_active"])
+        serializer.instance = obj
 
 class AssignDoctorToClinicUpdateView(generics.UpdateAPIView):
     queryset = AssignDoctorToClinic.objects.all()
     serializer_class = AssignDoctorToClinicSerializer
     http_method_names = ['patch']
-    permission_classes = [permissions.IsAuthenticated,IsAdmin]
+    permission_classes = [permissions.IsAuthenticated,IsClinicModerator]
     def patch(self, request, *args, **kwargs):
         allowed_fields = {'is_active'}
         requested_fileds = set(request.data.keys())
@@ -185,3 +195,14 @@ class AssignDoctorToClinicListView(generics.ListAPIView):
         return AssignDoctorToClinic.objects.filter(clinic_id = self.kwargs.get('clinic_id'))
     def get_object(self):
         return super().get_object()
+
+class AuthorizedPatientsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserShortInfoSerlizer
+
+    def get_queryset(self):
+        doctor = self.request.user
+        return User.objects.filter(
+            authorized_doctors__doctor=doctor,
+            authorized_doctors__is_active=True
+        ).distinct()
