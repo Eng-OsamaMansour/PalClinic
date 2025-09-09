@@ -34,7 +34,7 @@ PalClinic is an AI-powered healthcare platform designed for clinics in Palestine
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/YourOrg/PalClinic.git
+git clone [https://github.com/YourOrg/PalClinic](https://github.com/Eng-OsamaMansour/PalClinic/).git
 cd PalClinic
 ```
 
