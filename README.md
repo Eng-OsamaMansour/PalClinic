@@ -9,10 +9,9 @@ PalClinic is an AI-powered healthcare platform designed for clinics in Palestine
 
 - **AI-Powered Scheduling**: Intelligent queue management and time-slot optimization.
 - **Electronic Medical Records (EMR)**: Secure patient records with role-based access.
-- **Tele-Consultation**: Video calls between patients and doctors via WebRTC.
-- **Sign-Language Translation Module**: Real-time sign-to-text integration for accessibility.
+- **Consultation**: chat between patients and doctors.
+- **AI Consultation: AI Chatbot for medical consultation.
 - **Multi-Platform Support**: Web (React), Mobile (React Native), and REST API (Django DRF).
-- **Payment Integration**: Stripe for secure online payments.
 - **Location Services**: PostGIS for geographic queries (nearest clinics, directions).
 
 ---
@@ -22,7 +21,7 @@ PalClinic is an AI-powered healthcare platform designed for clinics in Palestine
 - **Backend**: Django REST Framework, Celery, Redis, PostgreSQL + PostGIS
 - **Frontend**: React (Vite, React Router, Bootstrap)
 - **Mobile**: React Native (Expo, AsyncStorage, Navigation Stack)
-- **AI/ML**: LSTM model for sign language recognition, MediaPipe for hand tracking
+- **AI/ML**: RAG for data and Open AI API for LLM
 - **Deployment**: Docker, Nginx, Gunicorn
 - **Realtime**: Django Channels, WebSockets for real-time updates
 
@@ -81,7 +80,6 @@ SECRET_KEY=your_secret_key
 DEBUG=True
 DATABASE_URL=postgres://user:pass@localhost:5432/palclinic
 REDIS_URL=redis://localhost:6379
-STRIPE_SECRET_KEY=your_stripe_key
 ```
 
 ---
